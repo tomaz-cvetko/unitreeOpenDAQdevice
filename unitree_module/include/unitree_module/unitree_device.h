@@ -15,37 +15,22 @@
  */
 
 #pragma once
-#include <unitree_module/common.h>
+#include <condition_variable>
+#include <queue>
+#include <thread>
+
 #include <opendaq/channel_ptr.h>
 #include <opendaq/device_impl.h>
-#include <thread>
-#include <condition_variable>
+
+#include <unitree_module/common.h>
 
 BEGIN_NAMESPACE_UNITREE_MODULE
-
-class myDDSDevice
-{
-public:
-    explicit myDDSDevice(const std::function<void(int16_t)>& function);
-
-    void acqLoop();
-
-    std::thread acqThread;
-    std::function<void(int16_t)> function;
-    std::condition_variable cv;
-    std::mutex mutex;
-
-    int16_t smpl;
-    int sign;
-};
 
 class UnitreeDevice final : public Device
 {
 public:
     explicit UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent);
-    // ~UnitreeDevice() override;
-
-    // void UnitreeDevice_fun(const std::function<void(int16_t)>& function);
+    ~UnitreeDevice() override;
 
     static DeviceInfoPtr CreateDeviceInfo();
     static DeviceTypePtr CreateType();
@@ -54,41 +39,30 @@ public:
     DeviceInfoPtr onGetInfo() override;
     uint64_t onGetTicksSinceOrigin() override;
 
-    // std::condition_variable cv;
-    // std::mutex mutex;
-
-    // int16_t smpl;
-    // int sign;
-
-    std::shared_ptr<myDDSDevice> myDev;
-
 private:
-    // void initDomain();
-    // void initChannels();
-    void initSignals();
-    // void acqLoop();
-    void processData(int16_t data) const;
+    void initDomain();
+    void initChannels();
+
+    // void processData(int16_t data) const;
     // void processData(std::vector<int16_t> data) const;
+
+    void acqLoop();
+    void forwardDataCallback(std::vector<int16_t>&& data);
+    void forwardData(std::vector<int16_t>& data);
 
     std::chrono::microseconds getMicroSecondsSinceDeviceStart() const;
 
-    std::thread acqThread;
+    bool stopAcq;
+    std::queue<std::vector<int16_t>> queue;
+
+    std::mutex mutex;
     std::condition_variable cv;
+    std::thread acqThread;
 
     std::chrono::steady_clock::time_point startTime;
     std::chrono::microseconds microSecondsFromEpochToDeviceStart;
 
     ChannelPtr channel1;
-    ChannelPtr channel2;
-
-    SignalConfigPtr sig_F_fl;
-    SignalConfigPtr sig_F_fr;
-    SignalConfigPtr sig_F_rl;
-    SignalConfigPtr sig_F_rr;
-    SignalConfigPtr sigTime;
-
-    size_t acqLoopTime;
-    bool stopAcq;
 };
 
 END_NAMESPACE_UNITREE_MODULE

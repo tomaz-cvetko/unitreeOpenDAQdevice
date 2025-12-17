@@ -1,19 +1,19 @@
-#include <unitree_module/unitree_channel.h>
-#include <opendaq/signal_factory.h>
-#include <opendaq/packet_factory.h>
-#include <fmt/format.h>
 #include <coreobjects/callable_info_factory.h>
-#include <opendaq/data_rule_factory.h>
 #include <coreobjects/unit_factory.h>
+#include <fmt/format.h>
+#include <opendaq/data_rule_factory.h>
+#include <opendaq/packet_factory.h>
+#include <opendaq/signal_factory.h>
+#include <unitree_module/unitree_channel.h>
 #include <chrono>
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
-ExampleChannel::ExampleChannel(const ContextPtr& context,
+UnitreeChannel::UnitreeChannel(const ContextPtr& context,
                                const ComponentPtr& parent,
                                const StringPtr& localId,
-                               const RefChannelInit& init)
-    : ChannelImpl(FunctionBlockType("ExampleChannel",  fmt::format("AI{}", init.index + 1), ""), context, parent, localId)
+                               const UnitreeChannelInit& init)
+    : ChannelImpl(FunctionBlockType("UnitreeChannel", fmt::format("DogCh{}", init.index + 1), ""), context, parent, localId)
     , index(init.index)
     , startTime(init.startTime)
     , microSecondsFromEpochToStartTime(init.microSecondsFromEpochToStartTime)
@@ -26,53 +26,48 @@ ExampleChannel::ExampleChannel(const ContextPtr& context,
     buildSignalDescriptors();
 }
 
-void ExampleChannel::initProperties()
+void UnitreeChannel::initProperties()
 {
 }
 
-
-uint64_t ExampleChannel::getSamplesSinceStart(std::chrono::microseconds time) const
-{
-    const uint64_t samplesSinceStart = static_cast<uint64_t>(std::trunc(static_cast<double>((time - startTime).count()) / 1000000.0 * sampleRate));
-    return samplesSinceStart;
-}
-
-void ExampleChannel::collectSamples(std::chrono::microseconds curTime)
+void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vector<int16_t>& data)
 {
     auto lock = this->getAcquisitionLock();
 
-    const uint64_t samplesSinceStart = getSamplesSinceStart(curTime);
-    auto newSamples = samplesSinceStart - samplesGenerated;
+    const size_t bufferSize = data.size();
+    assert(bufferSize % 4 == 0);
 
-    if (newSamples > 0)
+    const size_t sampleCount = bufferSize / 4;
+
+    // TODO: I have no idea what timestamps are appropriate here
+    auto domainPacket = DataPacket(timeSignal.getDescriptor(), sampleCount, curTime.count());
+    std::vector<DataPacketPtr> packets;
+    packets.reserve(4);
+    packets.push_back(DataPacketWithDomain(domainPacket, forceFLsignal.getDescriptor(), sampleCount));  // flPacket
+    packets.push_back(DataPacketWithDomain(domainPacket, forceFRsignal.getDescriptor(), sampleCount));  // frPacket
+    packets.push_back(DataPacketWithDomain(domainPacket, forceRLsignal.getDescriptor(), sampleCount));  // rlPacket
+    packets.push_back(DataPacketWithDomain(domainPacket, forceRRsignal.getDescriptor(), sampleCount));  // rrPacket
+
+    // NOTE: If this is too slow, we can optimize the data structure
+    for (size_t sampleIndex = 0; sampleIndex < sampleCount; ++sampleIndex)
     {
-        const auto packetTime = samplesGenerated * deltaT + static_cast<uint64_t>(microSecondsFromEpochToStartTime.count());
-        auto [dataPacket, domainPacket] = generateSamples(static_cast<int64_t>(packetTime), newSamples);
-
-        valueSignal.sendPacket(std::move(dataPacket));
-        timeSignal.sendPacket(std::move(domainPacket));
-
-        samplesGenerated = samplesSinceStart;
+        for (size_t i = 0; i < 4; ++i)
+        {
+            int16_t* packetData = static_cast<int16_t*>(packets[i].getRawData());
+            packetData[sampleIndex] = data[4 * sampleIndex + i];
+        }
     }
+
+    timeSignal.sendPacket(domainPacket);
+    forceFLsignal.sendPacket(packets[0]);
+    forceFRsignal.sendPacket(packets[1]);
+    forceRLsignal.sendPacket(packets[2]);
+    forceRRsignal.sendPacket(packets[3]);
+
+    counter += sampleCount;
 }
 
-std::tuple<PacketPtr, PacketPtr> ExampleChannel::generateSamples(int64_t curTime, uint64_t newSamples)
-{
-    auto domainPacket = DataPacket(timeSignal.getDescriptor(), newSamples, curTime);
-    DataPacketPtr dataPacket = DataPacketWithDomain(domainPacket, valueSignal.getDescriptor(), newSamples);
-
-    double* buffer = static_cast<double*>(dataPacket.getRawData());
-
-    //for (uint64_t i = 0; i < newSamples; i++)
-    //    buffer[i] = static_cast<double>(counter++) / sampleRate;
-
-    for (uint64_t i = 0; i < newSamples; i++)
-        buffer[i] = static_cast<double>(5);
-
-    return {dataPacket, domainPacket};
-}
-
-std::string ExampleChannel::getEpoch()
+std::string UnitreeChannel::getEpoch()
 {
     const std::time_t epochTime = std::chrono::system_clock::to_time_t(std::chrono::time_point<std::chrono::system_clock>{});
 
@@ -82,33 +77,34 @@ std::string ExampleChannel::getEpoch()
     return { buf };
 }
 
-RatioPtr ExampleChannel::getResolution()
+RatioPtr UnitreeChannel::getResolution()
 {
     return Ratio(1, 1000000);
 }
 
-Int ExampleChannel::getDeltaT(const double sr) const
+uint64_t UnitreeChannel::getSamplesSinceStart(std::chrono::microseconds time) const
+{
+    return counter;
+}
+
+Int UnitreeChannel::getDeltaT(const double sr) const
 {
     const double tickPeriod = getResolution();
     const double samplePeriod = 1.0 / sr;
     return static_cast<Int>(std::round(samplePeriod / tickPeriod));
 }
 
-void ExampleChannel::buildSignalDescriptors()
+void UnitreeChannel::buildSignalDescriptors()
 {
-    const auto valueDescriptor = DataDescriptorBuilder().setSampleType(SampleType::Float64).setUnit(Unit("V", -1, "volts", "voltage"));
+    const auto valueDescriptorForce = DataDescriptorBuilder().setSampleType(SampleType::Int16).setUnit(Unit("N", -1));
 
-    // const auto valueDescriptorForce = DataDescriptorBuilder().setSampleType(SampleType::Int16).setUnit(Unit("N", -1));
-
-    valueSignal.setDescriptor(valueDescriptor.build());
-    deltaT = getDeltaT(sampleRate);
-
-    // forceFLsignal.setDescriptor(valueDescriptorForce.build());
-    // forceFRsignal.setDescriptor(valueDescriptorForce.build());
-    // forceRLsignal.setDescriptor(valueDescriptorForce.build());
-    // forceRRsignal.setDescriptor(valueDescriptorForce.build());
+    forceFLsignal.setDescriptor(valueDescriptorForce.build());
+    forceFRsignal.setDescriptor(valueDescriptorForce.build());
+    forceRLsignal.setDescriptor(valueDescriptorForce.build());
+    forceRRsignal.setDescriptor(valueDescriptorForce.build());
 
     // delta, start, tickResolution, unit, origin
+    deltaT = getDeltaT(sampleRate);
 
     // PacketOffset
     // PacketOffset + rule.delta * sampleIndex + rule.start -> ticks since origin
@@ -124,20 +120,21 @@ void ExampleChannel::buildSignalDescriptors()
     timeSignal.setDescriptor(timeDescriptor.build());
 }
 
-void ExampleChannel::createSignals()
+void UnitreeChannel::createSignals()
 {
-    valueSignal = createAndAddSignal(fmt::format("AI{}", index));
-    timeSignal = createAndAddSignal(fmt::format("AI{}Time", index), nullptr, false);
-    valueSignal.setDomainSignal(timeSignal);
+    timeSignal = createAndAddSignal(fmt::format("Dog Time"), nullptr, false);
 
-    // forceFLsignal = createAndAddSignal(fmt::format("FL force"));
-    // forceFRsignal = createAndAddSignal(fmt::format("FR force"));
-    // forceRLsignal = createAndAddSignal(fmt::format("RL force"));
-    // forceRRsignal = createAndAddSignal(fmt::format("RR force"));
-    // forceFLsignal.setDomainSignal(timeSignal);
-    // forceFRsignal.setDomainSignal(timeSignal);
-    // forceRLsignal.setDomainSignal(timeSignal);
-    // forceRRsignal.setDomainSignal(timeSignal);
+    forceFLsignal = createAndAddSignal(fmt::format("FL force"));
+    forceFLsignal.setDomainSignal(timeSignal);
+
+    forceFRsignal = createAndAddSignal(fmt::format("FR force"));
+    forceFRsignal.setDomainSignal(timeSignal);
+
+    forceRLsignal = createAndAddSignal(fmt::format("RL force"));
+    forceRLsignal.setDomainSignal(timeSignal);
+
+    forceRRsignal = createAndAddSignal(fmt::format("RR force"));
+    forceRRsignal.setDomainSignal(timeSignal);
 }
 
 END_NAMESPACE_UNITREE_MODULE

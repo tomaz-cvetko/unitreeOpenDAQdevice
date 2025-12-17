@@ -1,17 +1,22 @@
 set(LIB_NAME unitree_module)
 set(MODULE_HEADERS_DIR ../include/${TARGET_FOLDER_NAME})
 
+# Use Cyclone IDL compiler to generate source code
+idlcxx_generate(TARGET cyclonedata FILES CycloneData.idl WARNINGS no-implicit-extensibility)
+
 set(SRC_Include common.h
                 module_dll.h
                 unitree_module.h
                 unitree_device.h
                 unitree_channel.h
+                sensor_data_listener.h
 )
 
 set(SRC_Srcs module_dll.cpp
              unitree_module.cpp
              unitree_device.cpp
              unitree_channel.cpp
+             sensor_data_listener.cpp
 )
 
 prepend_include(${TARGET_FOLDER_NAME} SRC_Include)
@@ -41,6 +46,7 @@ target_link_libraries(${LIB_NAME}
     PUBLIC
     daq::opendaq
     CycloneDDS-CXX::ddscxx
+    cyclonedata
 )
 
 target_include_directories(${LIB_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>

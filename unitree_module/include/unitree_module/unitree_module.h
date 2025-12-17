@@ -32,6 +32,7 @@ public:
 private:
     std::mutex sync;
     bool deviceAdded;
+    size_t deviceIndex;
 };
 
 END_NAMESPACE_UNITREE_MODULE

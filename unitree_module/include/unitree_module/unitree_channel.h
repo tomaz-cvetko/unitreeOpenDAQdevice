@@ -15,22 +15,23 @@
  */
 
 #pragma once
-#include <unitree_module/common.h>
 #include <opendaq/channel_impl.h>
 #include <opendaq/signal_config_ptr.h>
+#include <unitree_module/common.h>
 #include <optional>
 #include <random>
+#include <vector>
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
 enum class WaveformType { Sine, Rect, None, Counter, ConstantValue };
 
-DECLARE_OPENDAQ_INTERFACE(IRefChannel, IBaseObject)
+DECLARE_OPENDAQ_INTERFACE(IDogChannel, IBaseObject)
 {
-    virtual void collectSamples(std::chrono::microseconds curTime) = 0;
+    virtual void publishSamples(std::chrono::microseconds curTime, std::vector<int16_t> & data) = 0;
 };
 
-struct RefChannelInit
+struct UnitreeChannelInit
 {
     size_t index;
     double sampleRate;
@@ -38,16 +39,16 @@ struct RefChannelInit
     std::chrono::microseconds microSecondsFromEpochToStartTime;
 };
 
-class ExampleChannel final : public ChannelImpl<IRefChannel>
+class UnitreeChannel final : public ChannelImpl<IDogChannel>
 {
 public:
-    explicit ExampleChannel(const ContextPtr& context,
+    explicit UnitreeChannel(const ContextPtr& context,
                             const ComponentPtr& parent,
                             const StringPtr& localId,
-                            const RefChannelInit& init);
+                            const UnitreeChannelInit& init);
 
-    // IRefChannel
-    void collectSamples(std::chrono::microseconds curTime) override;
+    // IDogChannel
+    void publishSamples(std::chrono::microseconds curTime, std::vector<int16_t>& data) override;
 
     static std::string getEpoch();
     static RatioPtr getResolution();
@@ -58,7 +59,6 @@ private:
     void buildSignalDescriptors();
 
     uint64_t getSamplesSinceStart(std::chrono::microseconds time) const;
-    std::tuple<PacketPtr, PacketPtr> generateSamples(int64_t curTime, uint64_t newSamples);
     [[nodiscard]] Int getDeltaT(const double sr) const;
 
     uint64_t deltaT;
@@ -72,13 +72,12 @@ private:
     uint64_t counter;
     double sampleRate;
 
-    SignalConfigPtr valueSignal;
     SignalConfigPtr timeSignal;
 
-    // SignalConfigPtr forceFLsignal;
-    // SignalConfigPtr forceFRsignal;
-    // SignalConfigPtr forceRLsignal;
-    // SignalConfigPtr forceRRsignal;
+    SignalConfigPtr forceFLsignal;
+    SignalConfigPtr forceFRsignal;
+    SignalConfigPtr forceRLsignal;
+    SignalConfigPtr forceRRsignal;
 };
 
 END_NAMESPACE_UNITREE_MODULE

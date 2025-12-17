@@ -14,12 +14,16 @@ UnitreeModule::UnitreeModule(ContextPtr context)
              VersionInfo(UNITREE_MODULE_MAJOR_VERSION, UNITREE_MODULE_MINOR_VERSION, UNITREE_MODULE_PATCH_VERSION),
              std::move(context),
              UNITREE_MODULE_NAME)
-      //, deviceAdded(false)
+    , deviceAdded(false)
+    , deviceIndex(0)
 {
 }
 
 ListPtr<IDeviceInfo> UnitreeModule::onGetAvailableDevices()
 {
+    // TODO: Different modules handle this differently - potentially one device should be created immediately and
+    // always available?
+
     /*ListPtr<IDeviceInfo> availableDevices = List<IDeviceInfo>();
     std::cout << "Hello from UnitreeModule::onGetAvailableDevices()" << std::endl;
 
@@ -32,14 +36,7 @@ ListPtr<IDeviceInfo> UnitreeModule::onGetAvailableDevices()
 
 DictPtr<IString, IDeviceType> UnitreeModule::onGetAvailableDeviceTypes()
 {
-    /*auto result = Dict<IString, IDeviceType>();
-
-    auto deviceType = UnitreeDevice::CreateType();
-    result.set(deviceType.getId(), deviceType);
-
-    return result;*/
-
-    auto type = DeviceType("robotDog", "Robot dog", "", "daq.dog");
+    auto type = UnitreeDevice::CreateType();
     return Dict<IString, IDeviceType>({{type.getId(), type}});
 }
 
@@ -47,10 +44,10 @@ DevicePtr UnitreeModule::onCreateDevice(const StringPtr& connectionString,
                                         const ComponentPtr& parent,
                                         const PropertyObjectPtr& /*config*/)
 {
-    /*std::scoped_lock lock(sync);
+    std::scoped_lock lock(sync);
 
     std::string connStr = connectionString;
-    if (connStr.find("example://") != 0)
+    if (connStr.find("daq.dog://") != 0)
         throw std::runtime_error("Invalid connection string prefix");
 
     if (deviceAdded)
@@ -59,9 +56,7 @@ DevicePtr UnitreeModule::onCreateDevice(const StringPtr& connectionString,
     auto devicePtr = createWithImplementation<IDevice, UnitreeDevice>(context, parent);
 
     deviceAdded = true;
-    return devicePtr;*/
-
-    return createWithImplementation<IDevice, UnitreeDevice>(context, parent);
+    return devicePtr;
 }
 
 END_NAMESPACE_UNITREE_MODULE
