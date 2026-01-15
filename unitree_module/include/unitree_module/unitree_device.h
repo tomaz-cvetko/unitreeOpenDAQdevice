@@ -16,11 +16,14 @@
 
 #pragma once
 #include <condition_variable>
+#include <optional>
 #include <queue>
 #include <thread>
 
 #include <opendaq/channel_ptr.h>
 #include <opendaq/device_impl.h>
+
+#include <unitree_module/sensor_data_listener.h>
 
 #include <unitree_module/common.h>
 
@@ -63,6 +66,8 @@ private:
     std::chrono::microseconds microSecondsFromEpochToDeviceStart;
 
     ChannelPtr channel1;
+
+    std::optional<dds::sub::DataReader<SensorDataListener::MsgType>> reader;
 };
 
 END_NAMESPACE_UNITREE_MODULE

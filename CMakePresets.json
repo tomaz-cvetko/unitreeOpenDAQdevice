@@ -3,10 +3,26 @@
     "configurePresets": [
         {
             "name": "x64/msvc-22/",
-            "displayName": "[MSVC] x64",
+            "hidden": true,
             "generator": "Visual Studio 17 2022",
             "cacheVariables": {
                 "OPENDAQ_DEVICE_EXAMPLE_ENABLE_SERVER_APP": true
+            }
+        },
+        {
+            "inherits": "x64/msvc-22/",
+            "name": "x64/msvc-22/debug",
+            "displayName": "[MSVC] Debug",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "C:/Program Files/CycloneDDS-Cxx/Debug;C:/Program Files/CycloneDDS/Debug"
+            }
+        },
+        {
+            "inherits": "x64/msvc-22/",
+            "name": "x64/msvc-22/release",
+            "displayName": "[MSVC] Release",
+            "cacheVariables": {
+                "CMAKE_PREFIX_PATH": "C:/Program Files/CycloneDDS-Cxx/Release;C:/Program Files/CycloneDDS/Release"
             }
         }
     ],
@@ -14,13 +30,13 @@
         {
             "name": "x64/msvc-22/full/release",
             "displayName": "[MSVC] Release",
-            "configurePreset": "x64/msvc-22/",
+            "configurePreset": "x64/msvc-22/release",
             "configuration": "Release"
         },
         {
             "name": "x64/msvc-22/full/debug",
             "displayName": "[MSVC] Debug",
-            "configurePreset": "x64/msvc-22/",
+            "configurePreset": "x64/msvc-22/debug",
             "configuration": "Debug"
         }
     ]

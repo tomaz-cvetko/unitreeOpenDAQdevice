@@ -5,10 +5,12 @@ BEGIN_NAMESPACE_UNITREE_MODULE
 SensorDataListener::SensorDataListener(const std::function<void(std::vector<int16_t>&&)>& func)
     : callback(func)
 {
+    std::cout << "Hello from SensorDataListener!" << std::endl;
 }
 
 void SensorDataListener::on_data_available(dds::sub::DataReader<MsgType>& reader)
 {
+    std::cout << "data available" << std::endl;
     dds::sub::LoanedSamples<MsgType> samples = reader.take();
     size_t numberOfSamples = samples.length();
 
@@ -24,7 +26,7 @@ void SensorDataListener::on_data_available(dds::sub::DataReader<MsgType>& reader
         }
 
         const MsgType& msg = sample.data();
-        const std::array<int16_t, 4>& values = msg.values();
+        const std::array<int16_t, 4>& values = msg.foot_force();
 
         // Pack into flat array as [x0, y0, z0, w0, x1, y1, z1, w1]
         std::copy(values.data(), values.data() + 4, &buffer[4 * sampleIndex]);

@@ -1,16 +1,19 @@
+#pragma once
 #include <unitree_module/common.h>
 
 /* Include the C++ DDS API. */
 #include "dds/dds.hpp"
 #include "dds/domain/qos/DomainParticipantQos.hpp"
 
-#include "CycloneData.hpp"
+// #include "CycloneData.hpp"
+#include "unitree_module/LowState.hpp"
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
 namespace
 {
-    using MsgType_ = CycloneData::Msg;
+    // using MsgType_ = CycloneData::Msg;
+    using MsgType_ = unitree_go::msg::dds_::LowState_;
 }
 
 class SensorDataListener : public virtual dds::sub::DataReaderListener<MsgType_>
@@ -21,7 +24,8 @@ public:
     using ArgType = std::vector<int16_t>&&;
     inline static std::string GetTopicName()
     {
-        return "CycloneData_Msg";
+        // return "CycloneData_Msg";
+        return "rt/lowstate";
     }
 
     explicit SensorDataListener(const std::function<void(std::vector<int16_t>&&)>& func);

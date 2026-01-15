@@ -34,6 +34,10 @@ source_group("module" FILES ${MODULE_HEADERS_DIR}/unitree_module.h
 
 add_library(${LIB_NAME} SHARED ${SRC_Include}
                                ${SRC_Srcs}
+                               IMUState.cpp
+                               MotorState.cpp
+                               BmsState.cpp
+                               LowState.cpp
 )
 
 add_library(${SDK_TARGET_NAMESPACE}::${LIB_NAME} ALIAS ${LIB_NAME})
@@ -47,12 +51,24 @@ target_link_libraries(${LIB_NAME}
     daq::opendaq
     CycloneDDS-CXX::ddscxx
     cyclonedata
+    helloworlddata
 )
 
 target_include_directories(${LIB_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+                                              $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include/unitree_module>
                                               $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/../include>
                                               $<INSTALL_INTERFACE:include>
 )
 
 opendaq_set_module_properties(${LIB_NAME} ${PROJECT_VERSION_MAJOR})
 create_version_header(${LIB_NAME})
+
+# add_executable(unitree_device unitree_device.cpp)
+# target_link_libraries(unitree_device
+#     PRIVATE
+#     ${LIB_NAME}
+# )
+# target_include_directories(unitree_device
+#     PUBLIC
+#     ${CMAKE_CURRENT_SOURCE_DIR}/../include
+# )

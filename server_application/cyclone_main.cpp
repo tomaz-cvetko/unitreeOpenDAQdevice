@@ -19,6 +19,7 @@
 
 /* Include data type and specific traits to be used with the C++ DDS API. */
 #include "HelloWorldData.hpp"
+// #include "LowState.hpp"
 
 using namespace org::eclipse::cyclonedds;
 
@@ -30,10 +31,12 @@ int main()
 
         /* First, a domain participant is needed.
          * Create one on the default domain. */
-        dds::domain::DomainParticipant participant(domain::default_id());
+        // dds::domain::DomainParticipant participant(domain::default_id());
+        dds::domain::DomainParticipant participant(0);
 
         /* To subscribe to something, a topic is needed. */
-        dds::topic::Topic<HelloWorldData::Msg> topic(participant, "HelloWorldData_Msg");
+        dds::topic::Topic<HelloWorldData::Msg> topic(participant, "rt/lowstate");
+        // dds::topic::Topic<unitree_go::msg::dds_::LowState_> topic(participant, "rt/lowstate");
 
         /* A reader also needs a subscriber. */
         dds::sub::Subscriber subscriber(participant);

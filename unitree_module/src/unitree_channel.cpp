@@ -122,18 +122,18 @@ void UnitreeChannel::buildSignalDescriptors()
 
 void UnitreeChannel::createSignals()
 {
-    timeSignal = createAndAddSignal(fmt::format("Dog Time"), nullptr, false);
+    timeSignal = createAndAddSignal(fmt::format("Dog_Time"), nullptr, false);
 
-    forceFLsignal = createAndAddSignal(fmt::format("FL force"));
+    forceFLsignal = createAndAddSignal(fmt::format("FL_force"));
     forceFLsignal.setDomainSignal(timeSignal);
 
-    forceFRsignal = createAndAddSignal(fmt::format("FR force"));
+    forceFRsignal = createAndAddSignal(fmt::format("FR_force"));
     forceFRsignal.setDomainSignal(timeSignal);
 
-    forceRLsignal = createAndAddSignal(fmt::format("RL force"));
+    forceRLsignal = createAndAddSignal(fmt::format("RL_force"));
     forceRLsignal.setDomainSignal(timeSignal);
 
-    forceRRsignal = createAndAddSignal(fmt::format("RR force"));
+    forceRRsignal = createAndAddSignal(fmt::format("RR_force"));
     forceRRsignal.setDomainSignal(timeSignal);
 }
 
