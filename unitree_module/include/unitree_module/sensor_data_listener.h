@@ -1,3 +1,4 @@
+#pragma once
 #include <unitree_module/common.h>
 
 /* Include the C++ DDS API. */
