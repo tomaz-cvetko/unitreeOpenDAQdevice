@@ -55,4 +55,13 @@ endif()
 
 get_target_property(SRCS test_main SOURCES)
 message(STATUS "test_main sources: ${SRCS}")
+
+add_custom_command(TARGET cyclone_example POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:CycloneDDS::ddsc>
+    $<TARGET_FILE_DIR:cyclone_example>
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:CycloneDDS-CXX::ddscxx>
+    $<TARGET_FILE_DIR:cyclone_example>
+)
 # ==== ENDOF CYCLONE EXAMPLE APP ===
