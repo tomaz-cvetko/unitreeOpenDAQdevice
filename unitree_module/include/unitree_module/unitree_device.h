@@ -16,6 +16,7 @@
 
 #pragma once
 #include <condition_variable>
+#include <optional>
 #include <queue>
 #include <thread>
 
@@ -23,6 +24,7 @@
 #include <opendaq/device_impl.h>
 
 #include <unitree_module/common.h>
+#include <unitree_module/sensor_data_listener.h>
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
@@ -47,6 +49,7 @@ private:
     // void processData(std::vector<int16_t> data) const;
 
     void acqLoop();
+    void simLoop();
     void forwardDataCallback(std::vector<int16_t>&& data);
     void forwardData(std::vector<int16_t>& data);
 
@@ -58,11 +61,13 @@ private:
     std::mutex mutex;
     std::condition_variable cv;
     std::thread acqThread;
+    std::thread simThread;
 
     std::chrono::steady_clock::time_point startTime;
     std::chrono::microseconds microSecondsFromEpochToDeviceStart;
 
     ChannelPtr channel1;
+    std::optional<dds::sub::DataReader<SensorDataListener::MsgType>> reader;
 };
 
 END_NAMESPACE_UNITREE_MODULE

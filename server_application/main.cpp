@@ -25,53 +25,17 @@
 
 using namespace daq;
 
-void readSamples(const MirroredSignalConfigPtr signal)
-{
-    using namespace std::chrono_literals;
-    StreamReaderPtr reader = StreamReader<double, uint64_t>(signal);
-    DataDescriptorPtr descriptor = signal.getDomainSignal().getDescriptor();
-    RatioPtr resolution = descriptor.getTickResolution();
-    StringPtr origin = descriptor.getOrigin();
-    StringPtr unitSymbol = descriptor.getUnit().getSymbol();
-
-    std::cout << "\nReading signal: " << signal.getName() << "; active Streaming source: " << signal.getActiveStreamingSource() << std::endl;
-    std::cout << "Origin: " << origin << std::endl;
-
-    double samples[100];
-    uint64_t domainSamples[100];
-    for (int i = 0; i < 40; ++i)
-    {
-        std::this_thread::sleep_for(25ms);
-        SizeT count = 100;
-        reader.readWithDomain(samples, domainSamples, &count);
-        if (count > 0)
-        {
-            Float domainValue = (Int) domainSamples[count - 1] * resolution;
-            std::cout << "Value: " << samples[count - 1] << ", Domain: " << domainValue << unitSymbol << std::endl;
-        }
-    }
-}
-
 int main(int /*argc*/, const char* /*argv*/[])
 {
     std::cout << ":)" << std::endl;
 
     // Create an Instance, loading modules at MODULE_PATH
     const auto instance = InstanceBuilder()
-                            .addModulePath("C:/Program Files/openDAQ/bin/modules")
-                            .setRootDevice("daq.dog://DewesoftRobotics_B42D4000O4N9D402")
-                            .addDiscoveryServer("mdns")
-                            .build();
+                              .addModulePath("C:/Users/tomaz/work/anamahau/unitreeOpenDAQdevice/out/build/x64/msvc-22/debug/bin/Debug")
+                              .setRootDevice("daq.dog://DewesoftRobotics_B42D4000O4N9D402")
+                              .addDiscoveryServer("mdns")
+                              .build();
     instance.addServer("OpenDAQNativeStreaming", nullptr).enableDiscovery();
-    /*auto srv = instance.addServer("OpenDAQNativeStreaming", nullptr);
-    srv.enableDiscovery();*/
-
-    /*const auto instance = InstanceBuilder()
-                            .addModulePath("C:/Program Files/openDAQ/bin/modules")
-                            .setRootDevice("example://")
-                            .addDiscoveryServer("mdns")
-                            .build();
-    instance.addServer("OpenDAQNativeStreaming", nullptr).enableDiscovery();*/
 
     std::cout << "Press \"enter\" to exit the application..." << std::endl;
     std::cin.get();
