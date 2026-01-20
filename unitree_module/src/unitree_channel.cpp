@@ -30,6 +30,13 @@ void UnitreeChannel::initProperties()
 {
 }
 
+uint64_t UnitreeChannel::getSamplesSinceStart(std::chrono::microseconds time) const
+{
+    const uint64_t samplesSinceStart =
+        static_cast<uint64_t>(std::trunc(static_cast<double>((time - startTime).count()) / 1'000'000.0 * sampleRate));
+    return samplesSinceStart;
+}
+
 void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vector<int16_t>& data)
 {
     auto lock = this->getAcquisitionLock();
@@ -37,10 +44,15 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vect
     const size_t bufferSize = data.size();
     assert(bufferSize % 4 == 0);
 
+    // Number of samples in a synchronous & gapless scenario
+    const uint64_t samplesSinceStart = getSamplesSinceStart(curTime);
+    // const uint64_t neededSamples = samplesSinceStart - samplesGenerated;
+
     const size_t sampleCount = bufferSize / 4;
 
     // TODO: I have no idea what timestamps are appropriate here
-    auto domainPacket = DataPacket(timeSignal.getDescriptor(), sampleCount, curTime.count());
+    const auto packetTime = (samplesSinceStart) *deltaT + static_cast<uint64_t>(microSecondsFromEpochToStartTime.count());
+    auto domainPacket = DataPacket(timeSignal.getDescriptor(), sampleCount, packetTime);
     std::vector<DataPacketPtr> packets;
     packets.reserve(4);
     packets.push_back(DataPacketWithDomain(domainPacket, forceFLsignal.getDescriptor(), sampleCount));  // flPacket
@@ -65,6 +77,7 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vect
     forceRRsignal.sendPacket(packets[3]);
 
     counter += sampleCount;
+    samplesGenerated = samplesSinceStart;
 }
 
 std::string UnitreeChannel::getEpoch()
@@ -80,11 +93,6 @@ std::string UnitreeChannel::getEpoch()
 RatioPtr UnitreeChannel::getResolution()
 {
     return Ratio(1, 1000000);
-}
-
-uint64_t UnitreeChannel::getSamplesSinceStart(std::chrono::microseconds time) const
-{
-    return counter;
 }
 
 Int UnitreeChannel::getDeltaT(const double sr) const
@@ -104,7 +112,7 @@ void UnitreeChannel::buildSignalDescriptors()
     forceRRsignal.setDescriptor(valueDescriptorForce.build());
 
     // delta, start, tickResolution, unit, origin
-    deltaT = getDeltaT(sampleRate);
+    deltaT = getDeltaT(sampleRate);  // In number of ticks
 
     // PacketOffset
     // PacketOffset + rule.delta * sampleIndex + rule.start -> ticks since origin
@@ -122,18 +130,18 @@ void UnitreeChannel::buildSignalDescriptors()
 
 void UnitreeChannel::createSignals()
 {
-    timeSignal = createAndAddSignal(fmt::format("Dog Time"), nullptr, false);
+    timeSignal = createAndAddSignal(fmt::format("Dog_Time"), nullptr, true);
 
-    forceFLsignal = createAndAddSignal(fmt::format("FL force"));
+    forceFLsignal = createAndAddSignal(fmt::format("FL_force"));
     forceFLsignal.setDomainSignal(timeSignal);
 
-    forceFRsignal = createAndAddSignal(fmt::format("FR force"));
+    forceFRsignal = createAndAddSignal(fmt::format("FR_force"));
     forceFRsignal.setDomainSignal(timeSignal);
 
-    forceRLsignal = createAndAddSignal(fmt::format("RL force"));
+    forceRLsignal = createAndAddSignal(fmt::format("RL_force"));
     forceRLsignal.setDomainSignal(timeSignal);
 
-    forceRRsignal = createAndAddSignal(fmt::format("RR force"));
+    forceRRsignal = createAndAddSignal(fmt::format("RR_force"));
     forceRRsignal.setDomainSignal(timeSignal);
 }
 
