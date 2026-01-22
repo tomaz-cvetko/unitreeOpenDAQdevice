@@ -44,6 +44,13 @@ uint64_t UnitreeChannel::getSamplesSinceStart(std::chrono::microseconds time) co
     return samplesSinceStart;
 }
 
+uint64_t UnitreeChannel::getSamplesSinceStart(std::chrono::microseconds time) const
+{
+    const uint64_t samplesSinceStart =
+        static_cast<uint64_t>(std::trunc(static_cast<double>((time - startTime).count()) / 1'000'000.0 * sampleRate));
+    return samplesSinceStart;
+}
+
 void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vector<int16_t>& data)
 {
     // std::cout << "Hello from UnitreeChannel::publishSamples\n";
@@ -66,10 +73,7 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vect
     const size_t sampleCount = bufferSize / 4;
 
     // TODO: I have no idea what timestamps are appropriate here
-    // const auto packetTime = (samplesSinceStart) *deltaT + static_cast<uint64_t>(microSecondsFromEpochToStartTime.count());
-    const auto packetTime = (startTick + counter) * deltaT + static_cast<uint64_t>(microSecondsFromEpochToStartTime.count());
-    auto domainPacket = DataPacket(timeSignal.getDescriptor(), sampleCount, packetTime);
-    
+    auto domainPacket = DataPacket(timeSignal.getDescriptor(), sampleCount, curTime.count());
     std::vector<DataPacketPtr> packets;
     packets.reserve(4);
     packets.push_back(DataPacketWithDomain(domainPacket, forceFLsignal.getDescriptor(), sampleCount));  // flPacket
@@ -156,9 +160,7 @@ void UnitreeChannel::buildSignalDescriptors()
 
 void UnitreeChannel::createSignals()
 {
-    // std::cout << "Hello from UnitreeChannel::createSignals\n";
-
-    timeSignal = createAndAddSignal(fmt::format("Dog_Time"), nullptr, true);
+    timeSignal = createAndAddSignal(fmt::format("Dog_Time"), nullptr, false);
 
     forceFLsignal = createAndAddSignal(fmt::format("FL_force"));
     forceFLsignal.setDomainSignal(timeSignal);
