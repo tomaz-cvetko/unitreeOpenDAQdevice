@@ -1,4 +1,7 @@
 #include <unitree_module/sensor_data_listener.h>
+#include <ctime>
+#include <chrono>
+#include <iostream>
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
@@ -10,13 +13,15 @@ SensorDataListener::SensorDataListener(const std::function<void(std::vector<int1
 
 void SensorDataListener::on_data_available(dds::sub::DataReader<MsgType>& reader)
 {
-    std::cout << "data available" << std::endl;
+    time_t timestamp;
+    time(&timestamp);
+    
     dds::sub::LoanedSamples<MsgType> samples = reader.take();
     size_t numberOfSamples = samples.length();
-
+    
     constexpr size_t numberOfComponents = 4;
     std::vector<int16_t> buffer(numberOfComponents * numberOfSamples, 0);
-
+    
     size_t sampleIndex = 0;
     for (const auto& sample : samples)
     {
@@ -24,19 +29,20 @@ void SensorDataListener::on_data_available(dds::sub::DataReader<MsgType>& reader
         {
             continue;
         }
-
+        
         const MsgType& msg = sample.data();
         const std::array<int16_t, 4>& values = msg.foot_force();
 
         // Pack into flat array as [x0, y0, z0, w0, x1, y1, z1, w1]
-        std::copy(values.data(), values.data() + 4, &buffer[4 * sampleIndex]);
+        //std::copy(values.data(), values.data() + 4, &buffer[4 * sampleIndex]);
 
         // Equivalent but a bit easer to control
-        // for (size_t i = 0; i < 4; ++i)
-        // {
-        //     const size_t index = numberOfComponents * sampleIndex + i;
-        //     buffer[i] - values[i];
-        // }
+        for (size_t i = 0; i < 4; ++i)
+        {
+            const size_t index = numberOfComponents * sampleIndex + i;
+            buffer[index] = values[i];
+            // std::cout << values[i] << "\n";
+        }
 
         // Question: Is there any information about the time these values were measured that we must propagate?
 

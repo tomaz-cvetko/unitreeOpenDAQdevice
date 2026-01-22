@@ -29,3 +29,8 @@ add_library(<lib> ...)
 target_link_libraries(<lib> CycloneDDS-CXX::ddscxx <idlc-target>)
 ```
 - Build the project with `OPENDAQ_DEVICE_EXAMPLE_ENABLE_SERVER_APP=ON` and then try running `cyclone_example.exe` (should write two lines and not exit untill interrupted). Exiting without output likely means missing DLLs.
+
+## Useful links
+
+- https://support.unitree.com/home/en/developer/Basic_services (explanation of LowState and MotorState data)
+- https://support.unitree.com/home/en/developer/sports_services (explanation of SportModeState and IMUState data)

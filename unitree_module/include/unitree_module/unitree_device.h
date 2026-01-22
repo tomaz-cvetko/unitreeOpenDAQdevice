@@ -23,6 +23,7 @@
 #include <opendaq/device_impl.h>
 
 #include <unitree_module/common.h>
+#include <unitree_module/sensor_data_listener.h>
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
@@ -43,12 +44,19 @@ private:
     void initDomain();
     void initChannels();
 
+    SignalConfigPtr sig_F_fl;
+    SignalConfigPtr sig_F_fr;
+    SignalConfigPtr sig_F_rl;
+    SignalConfigPtr sig_F_rr;
+    SignalConfigPtr sigTime;
+
     // void processData(int16_t data) const;
     // void processData(std::vector<int16_t> data) const;
 
     void acqLoop();
     void forwardDataCallback(std::vector<int16_t>&& data);
     void forwardData(std::vector<int16_t>& data);
+    void processData(std::vector<int16_t>& data) const;
 
     std::chrono::microseconds getMicroSecondsSinceDeviceStart() const;
 
@@ -63,6 +71,9 @@ private:
     std::chrono::microseconds microSecondsFromEpochToDeviceStart;
 
     ChannelPtr channel1;
+
+    std::optional<dds::sub::DataReader<SensorDataListener::MsgType>> reader;
+
 };
 
 END_NAMESPACE_UNITREE_MODULE

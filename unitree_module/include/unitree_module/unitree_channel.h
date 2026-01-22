@@ -72,6 +72,8 @@ private:
     uint64_t counter;
     double sampleRate;
 
+    uint64_t startTick = 0;
+
     SignalConfigPtr timeSignal;
 
     SignalConfigPtr forceFLsignal;

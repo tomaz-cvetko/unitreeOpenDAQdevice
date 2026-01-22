@@ -1,3 +1,4 @@
+#pragma once
 #include <unitree_module/common.h>
 
 /* Include the C++ DDS API. */
@@ -26,6 +27,10 @@ public:
         // return "CycloneData_Msg";
         return "rt/lowstate";
     }
+
+    // auto now;
+    // auto duration;
+    // auto milliseconds;
 
     explicit SensorDataListener(const std::function<void(std::vector<int16_t>&&)>& func);
 
