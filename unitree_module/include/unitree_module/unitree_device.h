@@ -72,7 +72,7 @@ private:
 
     ChannelPtr channel1;
 
-    std::optional<dds::sub::DataReader<SensorDataListener::MsgType>> reader;
+    std::optional<dds::sub::DataReader<SensorDataListenerLowState::MsgType>> reader;
 
 };
 

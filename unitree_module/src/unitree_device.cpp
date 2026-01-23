@@ -27,6 +27,8 @@ UnitreeDevice::UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent)
     , stopAcq(false)
     , acqThread([this]() { this->acqLoop(); })
 {
+    // std::cout << "Hello from UnitreeDevice::UnitreeDevice\n";
+
     this->loggerComponent = ctx.getLogger().getOrAddComponent(UNITREE_MODULE_NAME);
     initDomain();
     initChannels();
@@ -36,21 +38,21 @@ UnitreeDevice::UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent)
     /****************************************/
     // Unitree DDS
     dds::domain::DomainParticipant participant(0);
-    dds::topic::Topic<SensorDataListener::MsgType> topic(participant, SensorDataListener::GetTopicName());
-    // dds::topic::Topic<SensorDataListener::MsgType> topic(participant, "rt/lowstate");
+    dds::topic::Topic<SensorDataListenerLowState::MsgType> topic(participant, SensorDataListenerLowState::GetTopicName());
+    // dds::topic::Topic<SensorDataListenerLowState::MsgType> topic(participant, "rt/lowstate");
     dds::sub::Subscriber subscriber(participant);
 
     reader.emplace(
         subscriber,
         topic,
         subscriber.default_datareader_qos(),
-        new SensorDataListener([this](std::vector<int16_t>&& data) {
+        new SensorDataListenerLowState([this](std::vector<int16_t>&& data) {
             this->forwardDataCallback(std::move(data)); }),
-        // new SensorDataListener(),
+        // new SensorDataListenerLowState(),
         dds::core::status::StatusMask::data_available()
     );
-    std::cout << "SensorDataListener::GetTopicName(): " << SensorDataListener::GetTopicName() << std::endl;
-    std::cout << "Listening for Unitree Go2 sensor data on topic '" << SensorDataListener::GetTopicName() << "'..." << std::endl;
+    std::cout << "SensorDataListenerLowState::GetTopicName(): " << SensorDataListenerLowState::GetTopicName() << std::endl;
+    std::cout << "Listening for Unitree Go2 sensor data on topic '" << SensorDataListenerLowState::GetTopicName() << "'..." << std::endl;
     /****************************************/
 }
 
@@ -67,6 +69,8 @@ UnitreeDevice::~UnitreeDevice()
 
 DeviceInfoPtr UnitreeDevice::CreateDeviceInfo()
 {
+    // std::cout << "Hello from UnitreeDevice::CreateDeviceInfo\n";
+    
     // auto devInfo = DeviceInfo("example://device");
     auto devInfo = DeviceInfo("daq.dog://DewesoftRobotics_B42D4000O4N9D402");
 
@@ -82,11 +86,15 @@ DeviceInfoPtr UnitreeDevice::CreateDeviceInfo()
 
 DeviceTypePtr UnitreeDevice::CreateType()
 {
+    // std::cout << "Hello from UnitreeDevice::CreateType\n";
+
     return DeviceType("robotDog", "Robot dog", "", "daq.dog");
 }
 
 void UnitreeDevice::initChannels()
 {
+    // std::cout << "Hello from UnitreeDevice::initChannels\n";
+
     auto microSecondsSinceDeviceStart = getMicroSecondsSinceDeviceStart();
 
     // UnitreeChannelInit init{0, 1000, microSecondsSinceDeviceStart, microSecondsFromEpochToDeviceStart};
@@ -96,17 +104,23 @@ void UnitreeDevice::initChannels()
 
 DeviceInfoPtr UnitreeDevice::onGetInfo()
 {
+    // std::cout << "Hello from UnitreeDevice::onGetInfo\n";
+
     return CreateDeviceInfo();
 }
 
 std::chrono::microseconds UnitreeDevice::getMicroSecondsSinceDeviceStart() const
 {
+    // std::cout << "Hello from UnitreeDevice::getMicroSecondsSinceDeviceStart\n";
+
     auto currentTime = std::chrono::steady_clock::now();
     return std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime);
 }
 
 uint64_t UnitreeDevice::onGetTicksSinceOrigin()
 {
+    // std::cout << "Hello from UnitreeDevice::onGetTicksSinceOrigin\n";
+
     /*auto ticksSinceEpoch = microSecondsFromEpochToDeviceStart + getMicroSecondsSinceDeviceStart();
     return static_cast<SizeT>(ticksSinceEpoch.count());*/
 
@@ -116,6 +130,8 @@ uint64_t UnitreeDevice::onGetTicksSinceOrigin()
 
 void UnitreeDevice::initDomain()
 {
+    // std::cout << "Hello from UnitreeDevice::initDomain\n";
+
     startTime = std::chrono::steady_clock::now();
     auto startAbsTime = std::chrono::system_clock::now();
 
@@ -126,6 +142,8 @@ void UnitreeDevice::initDomain()
 
 void UnitreeDevice::acqLoop()
 {
+    // std::cout << "Hello from UnitreeDevice::acqLoop\n";
+
     daqNameThread("UnitreeDogThread");
 
     while (true)
@@ -148,6 +166,8 @@ void UnitreeDevice::acqLoop()
 
 void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
 {
+    // std::cout << "Hello from UnitreeDevice::forwardDataCallback\n";
+
     if (CallbackQueueing)
     {
         std::unique_lock lock(mutex);
@@ -165,6 +185,8 @@ void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
 
 void UnitreeDevice::forwardData(std::vector<int16_t>& data)
 {
+    // std::cout << "Hello from UnitreeDevice::forwardData\n";
+
     // TODO: Maybe we need some multithreading locks here
     auto curTime = getMicroSecondsSinceDeviceStart();
     channel1.asPtr<IDogChannel>()->publishSamples(curTime, data);

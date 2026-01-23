@@ -32,5 +32,5 @@ target_link_libraries(<lib> CycloneDDS-CXX::ddscxx <idlc-target>)
 
 ## Useful links
 
-- https://support.unitree.com/home/en/developer/Basic_services (explanation of LowState and MotorState data)
+- https://support.unitree.com/home/en/developer/Basic_services (explanation of LowState, MotorState, IMUState and BmsState data)
 - https://support.unitree.com/home/en/developer/sports_services (explanation of SportModeState and IMUState data)

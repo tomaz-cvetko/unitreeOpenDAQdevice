@@ -57,6 +57,7 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vect
     auto lock = this->getAcquisitionLock();
 
     const size_t bufferSize = data.size();
+    // std::cout << "data.size: " << data.size() << std::endl;
     assert(bufferSize % 4 == 0);
 
     // Number of samples in a synchronous & gapless scenario
@@ -76,6 +77,10 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vect
     packets.push_back(DataPacketWithDomain(domainPacket, forceFRsignal.getDescriptor(), sampleCount));  // frPacket
     packets.push_back(DataPacketWithDomain(domainPacket, forceRLsignal.getDescriptor(), sampleCount));  // rlPacket
     packets.push_back(DataPacketWithDomain(domainPacket, forceRRsignal.getDescriptor(), sampleCount));  // rrPacket
+    // packets.push_back(DataPacketWithDomain(domainPacket, batterySignal.getDescriptor(), sampleCount));
+    // packets.push_back(DataPacketWithDomain(domainPacket, IMUaxSignal.getDescriptor(), sampleCount));
+    // packets.push_back(DataPacketWithDomain(domainPacket, IMUaySignal.getDescriptor(), sampleCount));
+    // packets.push_back(DataPacketWithDomain(domainPacket, IMUazSignal.getDescriptor(), sampleCount));
 
     // NOTE: If this is too slow, we can optimize the data structure
     for (size_t sampleIndex = 0; sampleIndex < sampleCount; ++sampleIndex)
@@ -92,6 +97,10 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vect
     forceFLsignal.sendPacket(packets[1]);
     forceRRsignal.sendPacket(packets[2]);
     forceRLsignal.sendPacket(packets[3]);
+    // batterySignal.sendPacket(packets[4]);
+    // IMUaxSignal.sendPacket(packets[5]);
+    // IMUaySignal.sendPacket(packets[6]);
+    // IMUazSignal.sendPacket(packets[7]);
 
     counter += sampleCount;
     samplesGenerated = samplesSinceStart;
@@ -129,13 +138,22 @@ void UnitreeChannel::buildSignalDescriptors()
 {
     // std::cout << "Hello from UnitreeChannel::buildSignalDescriptors\n";
 
-    const auto valueDescriptorForce = DataDescriptorBuilder().setSampleType(SampleType::Int16).setUnit(Unit("N", -1));
     const auto valueDescriptorMotorPosition = DataDescriptorBuilder().setSampleType(SampleType::Float32).setUnit(Unit("°", -1));
-
+    const auto valueDescriptorForce = DataDescriptorBuilder().setSampleType(SampleType::Int16).setUnit(Unit("N", -1));
+    // const auto valueDescriptorForce = DataDescriptorBuilder().setSampleType(SampleType::Float32).setUnit(Unit("N", -1));
     forceFLsignal.setDescriptor(valueDescriptorForce.build());
     forceFRsignal.setDescriptor(valueDescriptorForce.build());
     forceRLsignal.setDescriptor(valueDescriptorForce.build());
     forceRRsignal.setDescriptor(valueDescriptorForce.build());
+    // const auto valueDescriptorBattery = DataDescriptorBuilder().setSampleType(SampleType::UInt8).setUnit(Unit("%", -1));
+    // batterySignal.setDescriptor(valueDescriptorBattery.build());
+    // const auto valueDescriptorQuaternion = DataDescriptorBuilder().setSampleType(SampleType::Float32).setUnit(Unit("", -1));
+    // const auto valueDescriptorGyroscope = DataDescriptorBuilder().setSampleType(SampleType::Float32).setUnit(Unit("rad/s", -1));
+    // const auto valueDescriptorAccelerometer = DataDescriptorBuilder().setSampleType(SampleType::Float32).setUnit(Unit("m/s^2", -1));
+    // const auto valueDescriptorRPY = DataDescriptorBuilder().setSampleType(SampleType::Float32).setUnit(Unit("rad", -1));
+    // IMUaxSignal.setDescriptor(valueDescriptorAccelerometer.build());
+    // IMUaySignal.setDescriptor(valueDescriptorAccelerometer.build());
+    // IMUazSignal.setDescriptor(valueDescriptorAccelerometer.build());
 
     // delta, start, tickResolution, unit, origin
     deltaT = getDeltaT(sampleRate);  // In number of ticks
@@ -162,15 +180,22 @@ void UnitreeChannel::createSignals()
 
     forceFLsignal = createAndAddSignal(fmt::format("FL_force"));
     forceFLsignal.setDomainSignal(timeSignal);
-
     forceFRsignal = createAndAddSignal(fmt::format("FR_force"));
     forceFRsignal.setDomainSignal(timeSignal);
-
     forceRLsignal = createAndAddSignal(fmt::format("RL_force"));
     forceRLsignal.setDomainSignal(timeSignal);
-
     forceRRsignal = createAndAddSignal(fmt::format("RR_force"));
     forceRRsignal.setDomainSignal(timeSignal);
+
+    // batterySignal = createAndAddSignal(fmt::format("battery"));
+    // batterySignal.setDomainSignal(timeSignal);
+
+    // IMUaxSignal = createAndAddSignal(fmt::format("accelerometer_X"));
+    // IMUaxSignal.setDomainSignal(timeSignal);
+    // IMUaySignal = createAndAddSignal(fmt::format("accelerometer_Y"));
+    // IMUaySignal.setDomainSignal(timeSignal);
+    // IMUazSignal = createAndAddSignal(fmt::format("accelerometer_Z"));
+    // IMUazSignal.setDomainSignal(timeSignal);
 }
 
 END_NAMESPACE_UNITREE_MODULE

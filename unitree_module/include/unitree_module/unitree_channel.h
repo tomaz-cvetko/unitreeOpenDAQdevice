@@ -80,6 +80,12 @@ private:
     SignalConfigPtr forceFRsignal;
     SignalConfigPtr forceRLsignal;
     SignalConfigPtr forceRRsignal;
+
+    SignalConfigPtr IMUaxSignal;
+    SignalConfigPtr IMUaySignal;
+    SignalConfigPtr IMUazSignal;
+
+    SignalConfigPtr batterySignal;
 };
 
 END_NAMESPACE_UNITREE_MODULE

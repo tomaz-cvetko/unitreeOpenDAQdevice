@@ -7,21 +7,25 @@
 
 // #include "CycloneData.hpp"
 #include "unitree_module/LowState.hpp"
+#include "unitree_module/IMUState.hpp"
+// #include "unitree_module/SportModeState.hpp"
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
 namespace
 {
     // using MsgType_ = CycloneData::Msg;
-    using MsgType_ = unitree_go::msg::dds_::LowState_;
+    using MsgTypeLS_ = unitree_go::msg::dds_::LowState_;
+    // using MsgTypeSMS_ = unitree_go::msg::dds_::SportModeState_;
 }
 
-class SensorDataListener : public virtual dds::sub::DataReaderListener<MsgType_>
+class SensorDataListenerLowState : public virtual dds::sub::DataReaderListener<MsgTypeLS_>
 {
 public:
     // using MsgType = unitree_go::msg::dds_::LowState_;
-    using MsgType = MsgType_;
+    using MsgType = MsgTypeLS_;
     using ArgType = std::vector<int16_t>&&;
+    // using ArgType = std::vector<float_t>&&;
     inline static std::string GetTopicName()
     {
         // return "CycloneData_Msg";
@@ -32,7 +36,9 @@ public:
     // auto duration;
     // auto milliseconds;
 
-    explicit SensorDataListener(const std::function<void(std::vector<int16_t>&&)>& func);
+    bool printOnce;
+
+    explicit SensorDataListenerLowState(const std::function<void(std::vector<int16_t>&&)>& func);
 
     void on_data_available(dds::sub::DataReader<MsgType>& reader) override;
 
@@ -53,6 +59,18 @@ public:
 
 private:
     std::function<void(std::vector<int16_t>&&)> callback;
+    // std::function<void(std::vector<float_t>&&)> callback;
 };
+
+/*class SensorDataListenerSportModeState : public virtual dds::sub::DataReaderListener<MsgTypeSMS_>
+{
+public:
+    using MsgTypeSMS = MsgTypeSMS_;
+    using ArgTypeSMS = std::vector<int16_t>&&;
+    inline static std::string GetTopicName()
+    {
+        return "rt/sportmodestate";
+    }
+};*/
 
 END_NAMESPACE_UNITREE_MODULE
