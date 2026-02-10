@@ -5,8 +5,11 @@
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
-SensorDataListenerLowState::SensorDataListenerLowState(const std::function<void(std::vector<int16_t>&&)>& func)
-    : callback(func)
+// SensorDataListenerLowState::SensorDataListenerLowState(const std::function<void(std::vector<int16_t>&&)>& func)
+// SensorDataListenerLowState::SensorDataListenerLowState(const std::function<void(BufferS&&)>& func)
+//     : callback(func)
+SensorDataListenerLowState::SensorDataListenerLowState(std::function<void(BufferS&&)> func)
+    : callback(std::move(func))
 {
     std::cout << "Hello from SensorDataListenerLowState!" << std::endl;
     printOnce = true;
@@ -22,6 +25,8 @@ void SensorDataListenerLowState::on_data_available(dds::sub::DataReader<MsgType>
     
     constexpr size_t numberOfComponents = 4;
     std::vector<int16_t> buffer(numberOfComponents * numberOfSamples, 0);
+    BufferS buffer_s;
+    
     // std::vector<float_t> buffer(numberOfComponents * numberOfSamples, 0);
     if (printOnce)
     {
@@ -45,6 +50,36 @@ void SensorDataListenerLowState::on_data_available(dds::sub::DataReader<MsgType>
         const std::array<int16_t, 4>& values = msg.foot_force();
         // const std::array<float_t, 3>& values2 = msg.imu_state().accelerometer();
 
+        buffer_s.forces = msg.foot_force();
+        buffer_s.battery = msg.bms_state().soc();
+        buffer_s.IMU = msg.imu_state();
+        std::copy_n(msg.motor_state().begin(), 12, buffer_s.motors.begin());
+        buffer_s.current = msg.power_a();
+        buffer_s.voltage = msg.power_v();
+        buffer_s.CPUtemp = msg.temperature_ntc1();
+        buffer_s.fanFrequency = msg.fan_frequency();
+
+        /*std::cout << "quaternion: ";
+        for (int i = 0; i < 4; i++)
+        {
+            std::cout << msg.imu_state().quaternion()[i] << ", ";
+        }
+        std::cout << "\n";*/
+        /*std::cout << "motor ddq: ";
+        for (int i = 0; i < 12; i++)
+        {
+            std::cout << msg.motor_state()[i].ddq() << ", ";
+        }
+        std::cout << "\n";*/
+        /*std::cout << "motor temp: ";
+        for (int i = 0; i < 12; i++)
+        {
+            std::cout << int(msg.motor_state()[i].temperature()) << ", ";
+        }
+        std::cout << "\n";*/
+
+        // std::cout << "Battery: " << +buffer_s.battery << "%\n";
+
         // Pack into flat array as [x0, y0, z0, w0, x1, y1, z1, w1]
         //std::copy(values.data(), values.data() + 4, &buffer[4 * sampleIndex]);
 
@@ -54,6 +89,7 @@ void SensorDataListenerLowState::on_data_available(dds::sub::DataReader<MsgType>
             const size_t index = numberOfComponents * sampleIndex + i;
             buffer[index] = values[i];
             // std::cout << values[i] << "\n";
+            // buffer_s.forces[index] = values[i];
             if (printOnce)
             {
                 std::cout << "forces: i = " << i << ", index = " << index << ", buffer = " << float(buffer[index]) << std::endl;
@@ -88,7 +124,8 @@ void SensorDataListenerLowState::on_data_available(dds::sub::DataReader<MsgType>
 
         ++sampleIndex;
     }
-    this->callback(std::move(buffer));
+    // this->callback(std::move(buffer));
+    this->callback(std::move(buffer_s));
 }
 
 void SensorDataListenerLowState::on_subscription_matched(dds::sub::DataReader<MsgType>& reader,

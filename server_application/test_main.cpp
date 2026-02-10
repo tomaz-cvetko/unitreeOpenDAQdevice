@@ -4,7 +4,7 @@
 #include <thread>
 
 #include "dds/dds.hpp"
-#include "HelloWorldData.hpp"
+// #include "HelloWorldData.hpp"
 
 int main()
 {

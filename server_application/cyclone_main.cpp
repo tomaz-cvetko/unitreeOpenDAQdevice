@@ -18,7 +18,7 @@
 #include "dds/dds.hpp"
 
 /* Include data type and specific traits to be used with the C++ DDS API. */
-#include "HelloWorldData.hpp"
+// #include "HelloWorldData.hpp"
 // #include "LowState.hpp"
 
 using namespace org::eclipse::cyclonedds;
@@ -32,17 +32,17 @@ int main()
         /* First, a domain participant is needed.
          * Create one on the default domain. */
         // dds::domain::DomainParticipant participant(domain::default_id());
-        dds::domain::DomainParticipant participant(0);
+        // dds::domain::DomainParticipant participant(0);
 
         /* To subscribe to something, a topic is needed. */
-        dds::topic::Topic<HelloWorldData::Msg> topic(participant, "rt/lowstate");
+        // dds::topic::Topic<HelloWorldData::Msg> topic(participant, "rt/lowstate");
         // dds::topic::Topic<unitree_go::msg::dds_::LowState_> topic(participant, "rt/lowstate");
 
         /* A reader also needs a subscriber. */
-        dds::sub::Subscriber subscriber(participant);
+        // dds::sub::Subscriber subscriber(participant);
 
         /* Now, the reader can be created to subscribe to a HelloWorld message. */
-        dds::sub::DataReader<HelloWorldData::Msg> reader(subscriber, topic);
+        // dds::sub::DataReader<HelloWorldData::Msg> reader(subscriber, topic);
 
         /* Poll until a message has been read.
          * It isn't really recommended to do this kind wait in a polling loop.
@@ -50,49 +50,49 @@ int main()
          * Please take a look at Listeners and WaitSets for much better
          * solutions, albeit somewhat more elaborate ones. */
         std::cout << "=== [Subscriber] Wait for message." << std::endl;
-        bool poll = true;
-        while (poll)
-        {
+        // bool poll = true;
+        // while (poll)
+        // {
             /* For this example, the reader will return a set of messages (aka
              * Samples). There are other ways of getting samples from reader.
              * See the various read() and take() functions that are present. */
-            dds::sub::LoanedSamples<HelloWorldData::Msg> samples;
+            // dds::sub::LoanedSamples<HelloWorldData::Msg> samples;
 
             /* Try taking samples from the reader. */
-            samples = reader.take();
+            // samples = reader.take();
 
             /* Are samples read? */
-            if (samples.length() > 0)
-            {
+            // if (samples.length() > 0)
+            // {
                 /* Use an iterator to run over the set of samples. */
-                dds::sub::LoanedSamples<HelloWorldData::Msg>::const_iterator sample_iter;
-                for (sample_iter = samples.begin(); sample_iter < samples.end(); ++sample_iter)
-                {
+                // dds::sub::LoanedSamples<HelloWorldData::Msg>::const_iterator sample_iter;
+                // for (sample_iter = samples.begin(); sample_iter < samples.end(); ++sample_iter)
+                // {
                     /* Get the message and sample information. */
-                    const HelloWorldData::Msg& msg = sample_iter->data();
-                    const dds::sub::SampleInfo& info = sample_iter->info();
+                    // const HelloWorldData::Msg& msg = sample_iter->data();
+                    // const dds::sub::SampleInfo& info = sample_iter->info();
 
                     /* Sometimes a sample is read, only to indicate a data
                      * state change (which can be found in the info). If
                      * that's the case, only the key value of the sample
                      * is set. The other data parts are not.
                      * Check if this sample has valid data. */
-                    if (info.valid())
-                    {
-                        std::cout << "=== [Subscriber] Message received:" << std::endl;
-                        std::cout << "    userID  : " << msg.userID() << std::endl;
-                        std::cout << "    Message : \"" << msg.message() << "\"" << std::endl;
+                    // if (info.valid())
+                    // {
+                        // std::cout << "=== [Subscriber] Message received:" << std::endl;
+                        // std::cout << "    userID  : " << msg.userID() << std::endl;
+                        // std::cout << "    Message : \"" << msg.message() << "\"" << std::endl;
 
                         /* Only 1 message is expected in this example. */
-                        poll = false;
-                    }
-                }
-            }
-            else
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
-            }
-        }
+                        // poll = false;
+                    // }
+                // }
+            // }
+            // else
+            // {
+                // std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            // }
+        // }
     }
     catch (const dds::core::Exception& e)
     {

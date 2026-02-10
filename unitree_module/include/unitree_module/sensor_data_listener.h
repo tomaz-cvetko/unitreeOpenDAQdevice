@@ -8,6 +8,7 @@
 // #include "CycloneData.hpp"
 #include "unitree_module/LowState.hpp"
 #include "unitree_module/IMUState.hpp"
+#include "unitree_module/MotorState.hpp"
 // #include "unitree_module/SportModeState.hpp"
 
 BEGIN_NAMESPACE_UNITREE_MODULE
@@ -32,13 +33,27 @@ public:
         return "rt/lowstate";
     }
 
+    struct BufferS
+    {
+        // std::vector<int16_t> forces{4};
+        std::array<int16_t, 4> forces;
+        uint8_t battery;
+        unitree_go::msg::dds_::IMUState_ IMU;
+        std::array<unitree_go::msg::dds_::MotorState_, 12> motors;
+        int32_t current;
+        float_t voltage;
+        uint8_t CPUtemp;
+        std::array<uint16_t, 4> fanFrequency;
+    };
+
     // auto now;
     // auto duration;
     // auto milliseconds;
 
     bool printOnce;
 
-    explicit SensorDataListenerLowState(const std::function<void(std::vector<int16_t>&&)>& func);
+    // explicit SensorDataListenerLowState(const std::function<void(BufferS&&)>& func);
+    explicit SensorDataListenerLowState(std::function<void(BufferS&&)> func);
 
     void on_data_available(dds::sub::DataReader<MsgType>& reader) override;
 
@@ -58,8 +73,9 @@ public:
     void on_liveliness_changed(dds::sub::DataReader<MsgType>& reader, const dds::core::status::LivelinessChangedStatus& status) override;
 
 private:
-    std::function<void(std::vector<int16_t>&&)> callback;
+    // std::function<void(std::vector<int16_t>&&)> callback;
     // std::function<void(std::vector<float_t>&&)> callback;
+    std::function<void(BufferS&&)> callback;
 };
 
 /*class SensorDataListenerSportModeState : public virtual dds::sub::DataReaderListener<MsgTypeSMS_>

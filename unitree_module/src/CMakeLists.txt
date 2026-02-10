@@ -51,7 +51,7 @@ target_link_libraries(${LIB_NAME}
     daq::opendaq
     CycloneDDS-CXX::ddscxx
     cyclonedata
-    helloworlddata
+    # helloworlddata
 )
 
 target_include_directories(${LIB_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>

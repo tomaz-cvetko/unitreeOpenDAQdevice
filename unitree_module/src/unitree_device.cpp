@@ -42,15 +42,31 @@ UnitreeDevice::UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent)
     // dds::topic::Topic<SensorDataListenerLowState::MsgType> topic(participant, "rt/lowstate");
     dds::sub::Subscriber subscriber(participant);
 
+    low_state_listener = std::make_unique<SensorDataListenerLowState>(
+        [this](SensorDataListenerLowState::BufferS&& buffer) {
+            this->forwardDataCallback(std::move(buffer));
+        }
+    );
+
     reader.emplace(
         subscriber,
         topic,
         subscriber.default_datareader_qos(),
-        new SensorDataListenerLowState([this](std::vector<int16_t>&& data) {
-            this->forwardDataCallback(std::move(data)); }),
-        // new SensorDataListenerLowState(),
+        low_state_listener.get(),
         dds::core::status::StatusMask::data_available()
     );
+
+    /*reader.emplace(
+        subscriber,
+        topic,
+        subscriber.default_datareader_qos(),
+        // new SensorDataListenerLowState([this](std::vector<int16_t>&& data) {
+        //     this->forwardDataCallback(std::move(data)); }),
+        [this](SensorDataListenerLowState::BufferS&& buffer) {
+            this->forwardDataCallback(std::move(buffer)); },
+        // new SensorDataListenerLowState(),
+        dds::core::status::StatusMask::data_available()
+    );*/
     std::cout << "SensorDataListenerLowState::GetTopicName(): " << SensorDataListenerLowState::GetTopicName() << std::endl;
     std::cout << "Listening for Unitree Go2 sensor data on topic '" << SensorDataListenerLowState::GetTopicName() << "'..." << std::endl;
     /****************************************/
@@ -164,7 +180,8 @@ void UnitreeDevice::acqLoop()
     }
 }
 
-void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
+// void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
+void UnitreeDevice::forwardDataCallback(SensorDataListenerLowState::BufferS&& data)
 {
     // std::cout << "Hello from UnitreeDevice::forwardDataCallback\n";
 
@@ -183,7 +200,8 @@ void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
     }
 }
 
-void UnitreeDevice::forwardData(std::vector<int16_t>& data)
+// void UnitreeDevice::forwardData(std::vector<int16_t>& data)
+void UnitreeDevice::forwardData(SensorDataListenerLowState::BufferS& data)
 {
     // std::cout << "Hello from UnitreeDevice::forwardData\n";
 
