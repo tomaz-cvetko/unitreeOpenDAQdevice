@@ -40,7 +40,7 @@ public:
         uint8_t battery;
         unitree_go::msg::dds_::IMUState_ IMU;
         std::array<unitree_go::msg::dds_::MotorState_, 12> motors;
-        int32_t current;
+        float_t current;  // LowState::power_a is float
         float_t voltage;
         uint8_t CPUtemp;
         std::array<uint16_t, 4> fanFrequency;

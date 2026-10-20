@@ -237,7 +237,8 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, SensorDat
             float_t* packetDataQ = static_cast<float_t*>(packets[i+62].getRawData());
             packetDataQ[0] = data.IMU.quaternion()[i];
         }
-        int32_t* packetDataC = static_cast<int32_t*>(packets[66].getRawData());
+        // Descriptor is Float32: writing int32_t bits here showed up as garbage (e.g. 1 A -> 1.4e-45)
+        float_t* packetDataC = static_cast<float_t*>(packets[66].getRawData());
         packetDataC[0] = data.current;
         float_t* packetDataV = static_cast<float_t*>(packets[67].getRawData());
         packetDataV[0] = data.voltage;
