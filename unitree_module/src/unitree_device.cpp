@@ -32,8 +32,6 @@ UnitreeDevice::UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent)
     , microSecondsFromEpochToDeviceStart(0)
     , stopAcq(false)
 {
-    // std::cout << "Hello from UnitreeDevice::UnitreeDevice\n";
-
     // init() starts acqThread: if anything in it throws, the destructor is not called,
     // and destroying a joinable std::thread would terminate the process.
     try
@@ -56,14 +54,11 @@ void UnitreeDevice::init()
 
     // Publishes the queued samples; started before DDS so nothing is waiting long when data arrives
     acqThread = std::thread([this]() { this->acqLoop(); });
-    // initSignals();
     std::cout << "creating device\n";
 
-    /****************************************/
     // Unitree DDS
     dds::domain::DomainParticipant participant(0);
     dds::topic::Topic<SensorDataListenerLowState::MsgType> topic(participant, SensorDataListenerLowState::GetTopicName());
-    // dds::topic::Topic<SensorDataListenerLowState::MsgType> topic(participant, "rt/lowstate");
     dds::sub::Subscriber subscriber(participant);
 
     low_state_listener = std::make_unique<SensorDataListenerLowState>(
@@ -85,20 +80,8 @@ void UnitreeDevice::init()
         dds::core::status::StatusMask::data_available()
     );
 
-    /*reader.emplace(
-        subscriber,
-        topic,
-        subscriber.default_datareader_qos(),
-        // new SensorDataListenerLowState([this](std::vector<int16_t>&& data) {
-        //     this->forwardDataCallback(std::move(data)); }),
-        [this](SensorDataListenerLowState::BufferS&& buffer) {
-            this->forwardDataCallback(std::move(buffer)); },
-        // new SensorDataListenerLowState(),
-        dds::core::status::StatusMask::data_available()
-    );*/
     std::cout << "SensorDataListenerLowState::GetTopicName(): " << SensorDataListenerLowState::GetTopicName() << std::endl;
     std::cout << "Listening for Unitree Go2 sensor data on topic '" << SensorDataListenerLowState::GetTopicName() << "'..." << std::endl;
-    /****************************************/
 }
 
 UnitreeDevice::~UnitreeDevice()
@@ -141,12 +124,8 @@ void UnitreeDevice::stopAcqThread()
 
 DeviceInfoPtr UnitreeDevice::CreateDeviceInfo()
 {
-    // std::cout << "Hello from UnitreeDevice::CreateDeviceInfo\n";
-    
-    // auto devInfo = DeviceInfo("example://device");
     auto devInfo = DeviceInfo("daq.dog://DewesoftRobotics_B42D4000O4N9D402");
 
-    // devInfo.setName("UnitreeDevice");
     devInfo.setName("Robot dog");
     devInfo.setManufacturer("Unitree");
     devInfo.setModel("Unitree GO2");
@@ -158,52 +137,36 @@ DeviceInfoPtr UnitreeDevice::CreateDeviceInfo()
 
 DeviceTypePtr UnitreeDevice::CreateType()
 {
-    // std::cout << "Hello from UnitreeDevice::CreateType\n";
-
     return DeviceType("robotDog", "Robot dog", "", "daq.dog");
 }
 
 void UnitreeDevice::initChannels()
 {
-    // std::cout << "Hello from UnitreeDevice::initChannels\n";
-
     auto microSecondsSinceDeviceStart = getMicroSecondsSinceDeviceStart();
 
-    // UnitreeChannelInit init{0, 1000, microSecondsSinceDeviceStart, microSecondsFromEpochToDeviceStart};
     UnitreeChannelInit init{0, 500, microSecondsSinceDeviceStart, microSecondsFromEpochToDeviceStart};
     channel1 = createAndAddChannel<UnitreeChannel>(ioFolder, "ExCh1", init);
 }
 
 DeviceInfoPtr UnitreeDevice::onGetInfo()
 {
-    // std::cout << "Hello from UnitreeDevice::onGetInfo\n";
-
     return CreateDeviceInfo();
 }
 
 std::chrono::microseconds UnitreeDevice::getMicroSecondsSinceDeviceStart() const
 {
-    // std::cout << "Hello from UnitreeDevice::getMicroSecondsSinceDeviceStart\n";
-
     auto currentTime = std::chrono::steady_clock::now();
     return std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime);
 }
 
 uint64_t UnitreeDevice::onGetTicksSinceOrigin()
 {
-    // std::cout << "Hello from UnitreeDevice::onGetTicksSinceOrigin\n";
-
-    /*auto ticksSinceEpoch = microSecondsFromEpochToDeviceStart + getMicroSecondsSinceDeviceStart();
-    return static_cast<SizeT>(ticksSinceEpoch.count());*/
-
     using namespace std::chrono;
     return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
 }
 
 void UnitreeDevice::initDomain()
 {
-    // std::cout << "Hello from UnitreeDevice::initDomain\n";
-
     startTime = std::chrono::steady_clock::now();
     auto startAbsTime = std::chrono::system_clock::now();
 
@@ -247,6 +210,8 @@ void UnitreeDevice::acqLoop()
 
 void UnitreeDevice::forwardDataCallback(SensorDataListenerLowState::BufferS&& data)
 {
+    // Taken here, not when the sample is processed, so time spent in the queue does not count as clock offset
+    data.arrivalTime = getMicroSecondsSinceDeviceStart();
     {
         std::lock_guard lock(mutex);
         if (queue.size() >= MaxQueuedSamples)

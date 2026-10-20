@@ -210,8 +210,6 @@ py -m openDAQ
 
 You can also add the device in DewesoftX.
 
-`cyclone_example` and `test_main` are small CycloneDDS sanity checks.
-
 ### Testing without the robot: `dog_simulator`
 
 `dog_simulator.exe` is built next to `server_example.exe`. It publishes fake Go2 `LowState` messages on the same DDS topic, at 500 Hz, with `tick` advancing by 2 ms per message, just like the robot. Start `server_example` (e.g. with F5 in Visual Studio), then in a PowerShell window:
@@ -236,6 +234,7 @@ To reproduce network problems:
 ```powershell
 .\dog_simulator.exe --drop 2                     # randomly drop 2 % of messages (gaps in tick)
 .\dog_simulator.exe --stall 200 --stall-every 5  # every 5 s hold messages back for 200 ms, then send them as a burst
+.\dog_simulator.exe --clock-ppm 500              # the dog's clock runs 500 ppm fast (the module corrects this drift)
 ```
 
 To check what a client actually receives (sample rate, values, gaps, and whether the timestamps drift away from the PC clock), run `tools\check_stream.py` while `server_example` is running. It needs the openDAQ Python package (`py -m pip install openDAQ`):

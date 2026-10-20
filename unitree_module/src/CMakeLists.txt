@@ -1,9 +1,6 @@
 set(LIB_NAME unitree_module)
 set(MODULE_HEADERS_DIR ../include/${TARGET_FOLDER_NAME})
 
-# Use Cyclone IDL compiler to generate source code
-idlcxx_generate(TARGET cyclonedata FILES CycloneData.idl WARNINGS no-implicit-extensibility)
-
 set(SRC_Include common.h
                 module_dll.h
                 unitree_module.h
@@ -58,8 +55,6 @@ target_link_libraries(${LIB_NAME}
     daq::opendaq
     CycloneDDS-CXX::ddscxx
     unitree_go_types
-    cyclonedata
-    # helloworlddata
 )
 
 target_include_directories(${LIB_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
@@ -70,16 +65,6 @@ target_include_directories(${LIB_NAME} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_
 
 opendaq_set_module_properties(${LIB_NAME} ${PROJECT_VERSION_MAJOR})
 create_version_header(${LIB_NAME})
-
-# add_executable(unitree_device unitree_device.cpp)
-# target_link_libraries(unitree_device
-#     PRIVATE
-#     ${LIB_NAME}
-# )
-# target_include_directories(unitree_device
-#     PUBLIC
-#     ${CMAKE_CURRENT_SOURCE_DIR}/../include
-# )
 
 # The module is loaded as a plugin at runtime, so its own dependencies (ddsc[d].dll, ddscxx[d].dll)
 # must be copied next to it; the executables' runtime-DLL lists do not include them.

@@ -6,7 +6,9 @@
 #include <opendaq/signal_factory.h>
 #include <unitree_module/unitree_channel.h>
 
+#include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <chrono>
 #include <iostream>
 #include <type_traits>
@@ -25,6 +27,12 @@ namespace
     constexpr size_t BlockSize = 25;
     // A block that is not full yet is sent anyway after this long, so the batching adds at most ~50 ms latency.
     constexpr uint64_t MaxBlockAgeUs = 50'000;
+
+    // Clock drift correction: evaluated every 10 s; at most 25 slips (= 50 ms) per window, i.e. up to 5000 ppm,
+    // far more than a crystal drifts (typically < 100 ppm), and spread at least 100 samples (0.2 s) apart.
+    constexpr uint64_t DriftWindowUs = 10'000'000;
+    constexpr int64_t MaxSlipsPerWindow = 25;
+    constexpr uint64_t MinSamplesBetweenSlips = 100;
 
     template <typename T>
     constexpr SampleType sampleTypeOf()
@@ -142,6 +150,10 @@ void UnitreeChannel::anchorTime(uint32_t dogTick, uint64_t pcTimeUs)
     anchorTimeUs = pcTimeUs;
     lastDogTick = dogTick;
     dogTicksSinceAnchor = 0;
+
+    windowMinOffsetUs = INT64_MAX;
+    windowStartUs = pcTimeUs;
+    pendingSlips = 0;
 }
 
 std::optional<uint64_t> UnitreeChannel::getSampleTime(uint32_t dogTick, uint64_t pcTimeUs)
@@ -181,13 +193,58 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, const std
     const uint64_t pcTimeUs = static_cast<uint64_t>((microSecondsFromEpochToStartTime + curTime).count());
     for (const auto& sample : samples)
     {
-        const auto sampleTime = getSampleTime(sample.tick, pcTimeUs);
-        if (sampleTime)
-            appendSample(sample, *sampleTime, pcTimeUs);
+        const uint64_t arrivalUs = static_cast<uint64_t>((microSecondsFromEpochToStartTime + sample.arrivalTime).count());
+        const auto sampleTime = getSampleTime(sample.tick, arrivalUs);
+        if (!sampleTime)
+            continue;
+
+        ++samplesSinceSlip;
+        const bool slipNow = pendingSlips != 0 && samplesSinceSlip >= MinSamplesBetweenSlips;
+        if (slipNow && pendingSlips < 0)
+        {
+            // Timestamps run ahead of the PC clock: drop this sample; the next one takes its time slot.
+            anchorTimeUs -= deltaT;
+            ++pendingSlips;
+            samplesSinceSlip = 0;
+            continue;
+        }
+
+        appendSample(sample, *sampleTime, arrivalUs);
+        trackClockOffset(static_cast<int64_t>(arrivalUs) - static_cast<int64_t>(*sampleTime), arrivalUs);
+
+        if (slipNow && pendingSlips > 0)
+        {
+            // Timestamps lag behind the PC clock: repeat this sample, which moves all later samples one period later.
+            anchorTimeUs += deltaT;
+            appendSample(sample, *sampleTime + deltaT, arrivalUs);
+            --pendingSlips;
+            samplesSinceSlip = 0;
+        }
     }
 
     if (!block.empty() && pcTimeUs - blockFirstArrivalUs >= MaxBlockAgeUs)
         sendBlock();
+}
+
+void UnitreeChannel::trackClockOffset(int64_t offsetUs, uint64_t arrivalUs)
+{
+    windowMinOffsetUs = std::min(windowMinOffsetUs, offsetUs);
+    if (arrivalUs - windowStartUs < DriftWindowUs)
+        return;
+
+    // Start a new correction only when the previous one is done; otherwise this window's minimum
+    // was measured while it was still being applied.
+    const auto period = static_cast<int64_t>(deltaT);
+    if (pendingSlips == 0 && std::llabs(windowMinOffsetUs) >= period)
+    {
+        pendingSlips = std::clamp(windowMinOffsetUs / period, -MaxSlipsPerWindow, MaxSlipsPerWindow);
+        std::cout << "Clock drift correction: timestamps are " << std::llabs(windowMinOffsetUs) / 1000.0 << " ms "
+                  << (windowMinOffsetUs > 0 ? "behind" : "ahead of") << " the PC clock; "
+                  << (pendingSlips > 0 ? "repeating " : "dropping ") << std::llabs(pendingSlips) << " sample(s)" << std::endl;
+    }
+
+    windowMinOffsetUs = INT64_MAX;
+    windowStartUs = arrivalUs;
 }
 
 void UnitreeChannel::appendSample(const DogSample& sample, uint64_t sampleTime, uint64_t pcTimeUs)

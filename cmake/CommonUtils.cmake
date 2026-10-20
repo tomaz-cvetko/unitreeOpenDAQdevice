@@ -135,10 +135,6 @@ macro(setup_repo REPO_OPTION_PREFIX)
             # Produce diagnostic messages with exact location
             add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/diagnostics:caret>)
         endif()
-
-        # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /ignore:4221")
-        # set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /ignore:4221")
-        # set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
     endif()
     
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

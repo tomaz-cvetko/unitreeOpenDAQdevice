@@ -17,6 +17,9 @@
 #pragma once
 #include <condition_variable>
 #include <deque>
+#include <memory>
+#include <mutex>
+#include <optional>
 #include <thread>
 
 #include <opendaq/channel_ptr.h>
@@ -47,15 +50,6 @@ private:
     void initDomain();
     void initChannels();
 
-    SignalConfigPtr sig_F_fl;
-    SignalConfigPtr sig_F_fr;
-    SignalConfigPtr sig_F_rl;
-    SignalConfigPtr sig_F_rr;
-    SignalConfigPtr sigTime;
-
-    // void processData(int16_t data) const;
-    // void processData(std::vector<int16_t> data) const;
-
     void acqLoop();
     // Called on the DDS listener thread: only queues the sample, all openDAQ work happens in acqLoop
     void forwardDataCallback(SensorDataListenerLowState::BufferS&& data);
@@ -76,7 +70,6 @@ private:
     ChannelPtr channel1;
 
     std::unique_ptr<SensorDataListenerLowState> low_state_listener;
-    // std::optional<dds::sub::DataReader<MsgTypeLS_>> reader;
     std::optional<dds::sub::DataReader<SensorDataListenerLowState::MsgType>> reader;
 
 };

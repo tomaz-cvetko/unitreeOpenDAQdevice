@@ -3,7 +3,6 @@
 #include <unitree_module/unitree_module.h>
 #include <unitree_module/unitree_device.h>
 #include <unitree_module/version.h>
-// #include <unitree_module/test_device_impl.h>
 #include <opendaq/device_type_factory.h>
 #include <iostream>
 
@@ -23,13 +22,6 @@ ListPtr<IDeviceInfo> UnitreeModule::onGetAvailableDevices()
 {
     // TODO: Different modules handle this differently - potentially one device should be created immediately and
     // always available?
-
-    /*ListPtr<IDeviceInfo> availableDevices = List<IDeviceInfo>();
-    std::cout << "Hello from UnitreeModule::onGetAvailableDevices()" << std::endl;
-
-    availableDevices.pushBack(UnitreeDevice::CreateDeviceInfo());
-
-    return availableDevices;*/
 
     return {UnitreeDevice::CreateDeviceInfo()};
 }

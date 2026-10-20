@@ -7,6 +7,8 @@
  *   --drop <percent>     randomly skip messages (gaps: tick jumps by more than 2)
  *   --stall <ms>         every --stall-every seconds, hold messages back for <ms> and then send the
  *                        backlog at once (bursts: several messages arrive together, ticks unchanged)
+ * and a dog clock that runs at a slightly different rate than the PC clock:
+ *   --clock-ppm <ppm>    the dog's clock runs fast (> 0) or slow (< 0) compared to this PC
  *
  * Signal values are deterministic so they are easy to check in a client:
  *   foot_force[i]          20 + 15*sin(2*pi*0.5*t + i*pi/2)   [N, int16]
@@ -55,6 +57,7 @@ namespace
         double dropPercent = 0.0;
         double stallMs = 0.0;
         double stallEveryS = 10.0;
+        double clockPpm = 0.0;
         int domain = 0;
         uint32_t tickStart = 1000;
     };
@@ -67,6 +70,7 @@ namespace
                      "  --drop <percent>     randomly drop this percentage of messages (default 0)\n"
                      "  --stall <ms>         periodically hold messages back for <ms>, then send them as a burst (default 0 = off)\n"
                      "  --stall-every <s>    period of the stalls (default 10)\n"
+                     "  --clock-ppm <ppm>    dog clock runs this many ppm fast (> 0) or slow (< 0) vs. this PC (default 0)\n"
                      "  --tick-start <ms>    first LowState::tick value (default 1000)\n"
                      "  --domain <id>        DDS domain (default 0)\n";
     }
@@ -94,6 +98,8 @@ namespace
                 opt.stallMs = std::atof(value);
             else if (arg == "--stall-every")
                 opt.stallEveryS = std::atof(value);
+            else if (arg == "--clock-ppm")
+                opt.clockPpm = std::atof(value);
             else if (arg == "--tick-start")
                 opt.tickStart = static_cast<uint32_t>(std::strtoul(value, nullptr, 10));
             else if (arg == "--domain")
@@ -168,13 +174,17 @@ int main(int argc, char* argv[])
             std::cout << ", dropping " << opt.dropPercent << "%";
         if (opt.stallMs > 0)
             std::cout << ", " << opt.stallMs << " ms stall every " << opt.stallEveryS << " s";
+        if (opt.clockPpm != 0)
+            std::cout << ", dog clock off by " << opt.clockPpm << " ppm";
         std::cout << ". Ctrl+C to stop." << std::endl;
 
         std::mt19937 rng(12345);
         std::uniform_real_distribution<double> uniform(0.0, 100.0);
 
         LowState msg;
-        const auto period = std::chrono::duration<double>(1.0 / opt.rateHz);
+        const auto period = std::chrono::duration<double>(1.0 / opt.rateHz);  // in dog time
+        // A fast dog clock (> 0 ppm) counts its ticks in less real time, so its messages come out faster.
+        const double realPeriodS = period.count() / (1.0 + opt.clockPpm * 1e-6);
         const auto start = std::chrono::steady_clock::now();
         auto nextReport = start + std::chrono::seconds(1);
 
@@ -199,7 +209,7 @@ int main(int argc, char* argv[])
             if (!stallNow)
             {
                 // Catch up to the schedule: normally one message, after a stall the whole backlog.
-                const auto due = static_cast<uint64_t>(elapsedS / period.count()) + 1;
+                const auto due = static_cast<uint64_t>(elapsedS / realPeriodS) + 1;
                 for (; index < due; ++index)
                 {
                     if (opt.dropPercent > 0 && uniform(rng) < opt.dropPercent)

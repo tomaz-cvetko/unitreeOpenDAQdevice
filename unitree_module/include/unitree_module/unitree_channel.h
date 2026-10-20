@@ -20,15 +20,13 @@
 #include <opendaq/signal_config_ptr.h>
 #include <unitree_module/common.h>
 #include <functional>
+#include <cstdint>
 #include <optional>
-#include <random>
 #include <string>
 #include <vector>
 #include <unitree_module/sensor_data_listener.h>
 
 BEGIN_NAMESPACE_UNITREE_MODULE
-
-enum class WaveformType { Sine, Rect, None, Counter, ConstantValue };
 
 using DogSample = SensorDataListenerLowState::BufferS;
 
@@ -100,6 +98,15 @@ private:
     uint32_t lastDogTick = 0;
     uint64_t dogTicksSinceAnchor = 0; // 64-bit, so the 32-bit tick wrap-around (after 49.7 days) is harmless
     uint64_t droppedDuplicates = 0;
+
+    // Slow drift between the dog's clock and the PC clock, corrected by repeating or dropping single samples
+    // (see trackClockOffset). Offset = arrival time - timestamp: the minimum over a window is the clock offset
+    // without network/scheduling delays; it should stay near 0.
+    void trackClockOffset(int64_t offsetUs, uint64_t arrivalUs);
+    int64_t windowMinOffsetUs = INT64_MAX;
+    uint64_t windowStartUs = 0;
+    int64_t pendingSlips = 0;         // > 0: repeat samples (timestamps behind), < 0: drop samples (timestamps ahead)
+    uint64_t samplesSinceSlip = 0;
 
     // Block being assembled: equally spaced samples (deltaT apart) starting at blockStartTime
     std::vector<DogSample> block;
