@@ -25,8 +25,7 @@ void SensorDataListenerLowState::on_data_available(dds::sub::DataReader<MsgType>
     
     constexpr size_t numberOfComponents = 4;
     std::vector<int16_t> buffer(numberOfComponents * numberOfSamples, 0);
-    BufferS buffer_s;
-    
+
     // std::vector<float_t> buffer(numberOfComponents * numberOfSamples, 0);
     if (printOnce)
     {
@@ -50,6 +49,7 @@ void SensorDataListenerLowState::on_data_available(dds::sub::DataReader<MsgType>
         const std::array<int16_t, 4>& values = msg.foot_force();
         // const std::array<float_t, 3>& values2 = msg.imu_state().accelerometer();
 
+        BufferS buffer_s;
         buffer_s.forces = msg.foot_force();
         buffer_s.battery = msg.bms_state().soc();
         buffer_s.IMU = msg.imu_state();
@@ -122,10 +122,12 @@ void SensorDataListenerLowState::on_data_available(dds::sub::DataReader<MsgType>
 
         // Question: Is there any information about the time these values were measured that we must propagate?
 
+        // Forward every sample: one take() can return several, and each one is a separate 2 ms tick.
+        // (Invalid samples, e.g. dispose/unregister notifications, carry no data and are skipped above.)
+        this->callback(std::move(buffer_s));
+
         ++sampleIndex;
     }
-    // this->callback(std::move(buffer));
-    this->callback(std::move(buffer_s));
 }
 
 void SensorDataListenerLowState::on_subscription_matched(dds::sub::DataReader<MsgType>& reader,
