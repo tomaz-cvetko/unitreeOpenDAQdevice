@@ -16,10 +16,13 @@
 
 #pragma once
 #include <opendaq/channel_impl.h>
+#include <opendaq/data_descriptor_ptr.h>
 #include <opendaq/signal_config_ptr.h>
 #include <unitree_module/common.h>
+#include <functional>
 #include <optional>
 #include <random>
+#include <string>
 #include <vector>
 #include <unitree_module/sensor_data_listener.h>
 
@@ -27,10 +30,13 @@ BEGIN_NAMESPACE_UNITREE_MODULE
 
 enum class WaveformType { Sine, Rect, None, Counter, ConstantValue };
 
+using DogSample = SensorDataListenerLowState::BufferS;
+
 DECLARE_OPENDAQ_INTERFACE(IDogChannel, IBaseObject)
 {
-    // virtual void publishSamples(std::chrono::microseconds curTime, std::vector<int16_t> & data) = 0;
-    virtual void publishSamples(std::chrono::microseconds curTime, SensorDataListenerLowState::BufferS & data) = 0;
+    // Called from the device's acquisition thread with all samples received since the previous call.
+    // The list may be empty: the call then only sends out a partly filled packet that has waited long enough.
+    virtual void publishSamples(std::chrono::microseconds curTime, const std::vector<DogSample>& samples) = 0;
 };
 
 struct UnitreeChannelInit
@@ -50,24 +56,35 @@ public:
                             const UnitreeChannelInit& init);
 
     // IDogChannel
-    // void publishSamples(std::chrono::microseconds curTime, std::vector<int16_t>& data) override;
-    void publishSamples(std::chrono::microseconds curTime, SensorDataListenerLowState::BufferS& data) override;
+    void publishSamples(std::chrono::microseconds curTime, const std::vector<DogSample>& samples) override;
 
     static std::string getEpoch();
     static RatioPtr getResolution();
 
 private:
+    // One value signal: its descriptor is built from the C++ type T used to write its samples,
+    // so the sample type in the descriptor and the bytes written into the packet always match.
+    struct ValueSignal
+    {
+        SignalConfigPtr signal;
+        DataDescriptorPtr descriptor;
+        std::function<void(void* packetData, size_t sampleIndex, const DogSample& sample)> write;
+    };
+
     void initProperties();
     void createSignals();
-    void buildSignalDescriptors();
-    void buildSignalDescriptors_motors();
-    void createSignals_motors();
+    template <typename T, typename Getter>
+    void addValueSignal(const std::string& name, const std::string& unit, Getter getter);
 
     [[nodiscard]] Int getDeltaT(const double sr) const;
 
     // Domain value (us since epoch) for a sample with the given dog tick; std::nullopt = drop the sample.
     std::optional<uint64_t> getSampleTime(uint32_t dogTick, uint64_t pcTimeUs);
     void anchorTime(uint32_t dogTick, uint64_t pcTimeUs);
+
+    // Samples are collected into blocks and sent as one packet per signal (instead of one packet per sample)
+    void appendSample(const DogSample& sample, uint64_t sampleTime, uint64_t pcTimeUs);
+    void sendBlock();
 
     uint64_t deltaT;
     size_t index;
@@ -84,105 +101,13 @@ private:
     uint64_t dogTicksSinceAnchor = 0; // 64-bit, so the 32-bit tick wrap-around (after 49.7 days) is harmless
     uint64_t droppedDuplicates = 0;
 
+    // Block being assembled: equally spaced samples (deltaT apart) starting at blockStartTime
+    std::vector<DogSample> block;
+    uint64_t blockStartTime = 0;
+    uint64_t blockFirstArrivalUs = 0;  // PC time when the first sample of the block arrived
+
     SignalConfigPtr timeSignal;
-
-    SignalConfigPtr forceFLsignal;
-    SignalConfigPtr forceFRsignal;
-    SignalConfigPtr forceRLsignal;
-    SignalConfigPtr forceRRsignal;
-    
-    SignalConfigPtr batterySignal;
-    
-    SignalConfigPtr motor01qSignal;
-    SignalConfigPtr motor02qSignal;
-    SignalConfigPtr motor03qSignal;
-    SignalConfigPtr motor04qSignal;
-    SignalConfigPtr motor05qSignal;
-    SignalConfigPtr motor06qSignal;
-    SignalConfigPtr motor07qSignal;
-    SignalConfigPtr motor08qSignal;
-    SignalConfigPtr motor09qSignal;
-    SignalConfigPtr motor10qSignal;
-    SignalConfigPtr motor11qSignal;
-    SignalConfigPtr motor12qSignal;
-
-    SignalConfigPtr motor01dqSignal;
-    SignalConfigPtr motor02dqSignal;
-    SignalConfigPtr motor03dqSignal;
-    SignalConfigPtr motor04dqSignal;
-    SignalConfigPtr motor05dqSignal;
-    SignalConfigPtr motor06dqSignal;
-    SignalConfigPtr motor07dqSignal;
-    SignalConfigPtr motor08dqSignal;
-    SignalConfigPtr motor09dqSignal;
-    SignalConfigPtr motor10dqSignal;
-    SignalConfigPtr motor11dqSignal;
-    SignalConfigPtr motor12dqSignal;
-
-    /*SignalConfigPtr motor01ddqSignal;
-    SignalConfigPtr motor02ddqSignal;
-    SignalConfigPtr motor03ddqSignal;
-    SignalConfigPtr motor04ddqSignal;
-    SignalConfigPtr motor05ddqSignal;
-    SignalConfigPtr motor06ddqSignal;
-    SignalConfigPtr motor07ddqSignal;
-    SignalConfigPtr motor08ddqSignal;
-    SignalConfigPtr motor09ddqSignal;
-    SignalConfigPtr motor10ddqSignal;
-    SignalConfigPtr motor11ddqSignal;
-    SignalConfigPtr motor12ddqSignal;*/
-
-    SignalConfigPtr motor01tauSignal;
-    SignalConfigPtr motor02tauSignal;
-    SignalConfigPtr motor03tauSignal;
-    SignalConfigPtr motor04tauSignal;
-    SignalConfigPtr motor05tauSignal;
-    SignalConfigPtr motor06tauSignal;
-    SignalConfigPtr motor07tauSignal;
-    SignalConfigPtr motor08tauSignal;
-    SignalConfigPtr motor09tauSignal;
-    SignalConfigPtr motor10tauSignal;
-    SignalConfigPtr motor11tauSignal;
-    SignalConfigPtr motor12tauSignal;
-
-    SignalConfigPtr motor01tempSignal;
-    SignalConfigPtr motor02tempSignal;
-    SignalConfigPtr motor03tempSignal;
-    SignalConfigPtr motor04tempSignal;
-    SignalConfigPtr motor05tempSignal;
-    SignalConfigPtr motor06tempSignal;
-    SignalConfigPtr motor07tempSignal;
-    SignalConfigPtr motor08tempSignal;
-    SignalConfigPtr motor09tempSignal;
-    SignalConfigPtr motor10tempSignal;
-    SignalConfigPtr motor11tempSignal;
-    SignalConfigPtr motor12tempSignal;
-    
-    SignalConfigPtr IMUrSignal;
-    SignalConfigPtr IMUpSignal;
-    SignalConfigPtr IMUySignal;
-
-    SignalConfigPtr IMUgxSignal;
-    SignalConfigPtr IMUgySignal;
-    SignalConfigPtr IMUgzSignal;
-
-    SignalConfigPtr IMUaxSignal;
-    SignalConfigPtr IMUaySignal;
-    SignalConfigPtr IMUazSignal;
-
-    SignalConfigPtr IMUquaternionWSignal;
-    SignalConfigPtr IMUquaternionXSignal;
-    SignalConfigPtr IMUquaternionYSignal;
-    SignalConfigPtr IMUquaternionZSignal;
-
-    SignalConfigPtr motherboardCurrentSignal;
-    SignalConfigPtr motherboardVoltageSignal;
-    SignalConfigPtr CPUtempSignal;
-    SignalConfigPtr IMUtempSignal;
-    SignalConfigPtr fanFrequency1Signal;
-    SignalConfigPtr fanFrequency2Signal;
-    SignalConfigPtr fanFrequency3Signal;
-
+    std::vector<ValueSignal> valueSignals;
 };
 
 END_NAMESPACE_UNITREE_MODULE

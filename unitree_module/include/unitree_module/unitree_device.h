@@ -16,7 +16,7 @@
 
 #pragma once
 #include <condition_variable>
-#include <queue>
+#include <deque>
 #include <thread>
 
 #include <opendaq/channel_ptr.h>
@@ -57,18 +57,14 @@ private:
     // void processData(std::vector<int16_t> data) const;
 
     void acqLoop();
-    // void forwardDataCallback(std::vector<int16_t>&& data);
+    // Called on the DDS listener thread: only queues the sample, all openDAQ work happens in acqLoop
     void forwardDataCallback(SensorDataListenerLowState::BufferS&& data);
-    // void forwardData(std::vector<int16_t>& data);
-    void forwardData(SensorDataListenerLowState::BufferS& data);
-    // void processData(std::vector<int16_t>& data) const;
-    void processData(SensorDataListenerLowState::BufferS& data) const;
 
     std::chrono::microseconds getMicroSecondsSinceDeviceStart() const;
 
     bool stopAcq;
-    // std::queue<std::vector<int16_t>> queue;
-    std::queue<SensorDataListenerLowState::BufferS> queue;
+    std::deque<SensorDataListenerLowState::BufferS> queue;  // bounded, see MaxQueuedSamples
+    uint64_t droppedQueueFull = 0;  // guarded by mutex
 
     std::mutex mutex;
     std::condition_variable cv;

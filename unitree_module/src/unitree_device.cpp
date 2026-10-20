@@ -12,24 +12,29 @@
 
 #include <chrono>
 #include <iostream>
+#include <iterator>
+#include <vector>
 
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
 namespace
 {
-    constexpr bool CallbackQueueing = false;
+    // Samples waiting for the acquisition thread; 5000 = 10 s at 500 Hz. When full, the oldest are dropped
+    // (they then show up as gaps in the time axis).
+    constexpr size_t MaxQueuedSamples = 5000;
+    // The acquisition thread wakes up at least this often, so partly filled packets are sent out on time.
+    constexpr auto AcqWakeupPeriod = std::chrono::milliseconds(10);
 }
 
 UnitreeDevice::UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent)
     : GenericDevice<>(ctx, parent, "DewesoftRobotics_B42D4000O4N9D402", nullptr, "RobotDog")
     , microSecondsFromEpochToDeviceStart(0)
     , stopAcq(false)
-    , acqThread([this]() { this->acqLoop(); })
 {
     // std::cout << "Hello from UnitreeDevice::UnitreeDevice\n";
 
-    // acqThread is already running: if anything below throws, the destructor is not called,
+    // init() starts acqThread: if anything in it throws, the destructor is not called,
     // and destroying a joinable std::thread would terminate the process.
     try
     {
@@ -48,6 +53,9 @@ void UnitreeDevice::init()
     this->loggerComponent = this->context.getLogger().getOrAddComponent(UNITREE_MODULE_NAME);
     initDomain();
     initChannels();
+
+    // Publishes the queued samples; started before DDS so nothing is waiting long when data arrives
+    acqThread = std::thread([this]() { this->acqLoop(); });
     // initSignals();
     std::cout << "creating device\n";
 
@@ -64,10 +72,15 @@ void UnitreeDevice::init()
         }
     );
 
+    // The listener only queues samples, but leave DDS room for short scheduling hiccups
+    // (the default reader history keeps just the newest sample and silently overwrites the rest).
+    auto readerQos = subscriber.default_datareader_qos();
+    readerQos << dds::core::policy::History::KeepLast(64);
+
     reader.emplace(
         subscriber,
         topic,
-        subscriber.default_datareader_qos(),
+        readerQos,
         low_state_listener.get(),
         dds::core::status::StatusMask::data_available()
     );
@@ -201,55 +214,49 @@ void UnitreeDevice::initDomain()
 
 void UnitreeDevice::acqLoop()
 {
-    // std::cout << "Hello from UnitreeDevice::acqLoop\n";
-
     daqNameThread("UnitreeDogThread");
+
+    std::vector<SensorDataListenerLowState::BufferS> samples;
+    uint64_t reportedDrops = 0;
 
     while (true)
     {
-        std::unique_lock lock{mutex};
-        cv.wait(lock, [this]() { return !queue.empty() || stopAcq; });
-
-        if (stopAcq)
+        uint64_t drops;
         {
-            return;
+            std::unique_lock lock{mutex};
+            cv.wait_for(lock, AcqWakeupPeriod, [this]() { return !queue.empty() || stopAcq; });
+
+            if (stopAcq)
+                return;
+
+            samples.assign(std::make_move_iterator(queue.begin()), std::make_move_iterator(queue.end()));
+            queue.clear();
+            drops = droppedQueueFull;
         }
 
-        auto data = std::move(queue.front());
-        queue.pop();
-        lock.unlock();
+        if (drops != reportedDrops)
+        {
+            std::cout << "Acquisition fell behind: " << (drops - reportedDrops) << " samples dropped (queue full)" << std::endl;
+            reportedDrops = drops;
+        }
 
-        forwardData(data);
+        // Also called without samples, so the channel can send a partly filled packet that has waited long enough
+        channel1.asPtr<IDogChannel>()->publishSamples(getMicroSecondsSinceDeviceStart(), samples);
     }
 }
 
-// void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
 void UnitreeDevice::forwardDataCallback(SensorDataListenerLowState::BufferS&& data)
 {
-    // std::cout << "Hello from UnitreeDevice::forwardDataCallback\n";
-
-    if (CallbackQueueing)
     {
-        std::unique_lock lock(mutex);
-        queue.emplace(std::move(data));
-        lock.unlock();
-        cv.notify_all();
-        return;
+        std::lock_guard lock(mutex);
+        if (queue.size() >= MaxQueuedSamples)
+        {
+            queue.pop_front();
+            ++droppedQueueFull;
+        }
+        queue.push_back(std::move(data));
     }
-    else
-    {
-        forwardData(data);
-    }
-}
-
-// void UnitreeDevice::forwardData(std::vector<int16_t>& data)
-void UnitreeDevice::forwardData(SensorDataListenerLowState::BufferS& data)
-{
-    // std::cout << "Hello from UnitreeDevice::forwardData\n";
-
-    // TODO: Maybe we need some multithreading locks here
-    auto curTime = getMicroSecondsSinceDeviceStart();
-    channel1.asPtr<IDogChannel>()->publishSamples(curTime, data);
+    cv.notify_one();
 }
 
 END_NAMESPACE_UNITREE_MODULE
