@@ -212,6 +212,34 @@ You can also add the device in DewesoftX.
 
 `cyclone_example` and `test_main` are small CycloneDDS sanity checks.
 
+### Testing without the robot: `dog_simulator`
+
+`dog_simulator.exe` is built next to `server_example.exe`. It publishes fake Go2 `LowState` messages on the same DDS topic, at 500 Hz, with `tick` advancing by 2 ms per message, just like the robot. Start `server_example` (e.g. with F5 in Visual Studio), then in a PowerShell window:
+
+```powershell
+cd out\build\x64-debug\bin
+.\dog_simulator.exe
+```
+
+The simulator prints a status line every second; `matched_readers=1` means the module is receiving. Stop it with Ctrl+C. The values are fixed patterns, so they are easy to recognise in a client:
+
+| Signal | Simulated value |
+|---|---|
+| `FL_force` … `RR_force` | 20 ± 15 N sine (0.5 Hz), phase-shifted per leg |
+| `motorXXX_q` | 0.1·i ± 0.5 rad sine (1 Hz) |
+| `motorXXX_temperature` | 30 … 41 °C (motor index + 30), constant |
+| `current` | 1.5 ± 0.5 A sine (0.2 Hz) |
+| `voltage` | 28.5 V; `battery` 80 %; `CPU_temperature` 45 °C |
+
+To reproduce network problems:
+
+```powershell
+.\dog_simulator.exe --drop 2                     # randomly drop 2 % of messages (gaps in tick)
+.\dog_simulator.exe --stall 200 --stall-every 5  # every 5 s hold messages back for 200 ms, then send them as a burst
+```
+
+`.\dog_simulator.exe --help` lists all options (rate, duration, starting tick, DDS domain). The simulator works on the same PC as `server_example` or on another PC in the same network. Don't run it while the real robot is connected to the same network, because both publish on the same topic.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |

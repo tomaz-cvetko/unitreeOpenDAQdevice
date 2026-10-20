@@ -32,12 +32,19 @@ source_group("module" FILES ${MODULE_HEADERS_DIR}/unitree_module.h
 )
 
 
+# Unitree Go2 DDS message types (generated code), shared by the module and the dog_simulator tool
+add_library(unitree_go_types STATIC IMUState.cpp
+                                    MotorState.cpp
+                                    BmsState.cpp
+                                    LowState.cpp
+)
+target_include_directories(unitree_go_types PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../include
+                                                   ${CMAKE_CURRENT_SOURCE_DIR}/../include/unitree_module
+)
+target_link_libraries(unitree_go_types PUBLIC CycloneDDS-CXX::ddscxx)
+
 add_library(${LIB_NAME} SHARED ${SRC_Include}
                                ${SRC_Srcs}
-                               IMUState.cpp
-                               MotorState.cpp
-                               BmsState.cpp
-                               LowState.cpp
 )
 
 add_library(${SDK_TARGET_NAMESPACE}::${LIB_NAME} ALIAS ${LIB_NAME})
@@ -50,6 +57,7 @@ target_link_libraries(${LIB_NAME}
     PUBLIC
     daq::opendaq
     CycloneDDS-CXX::ddscxx
+    unitree_go_types
     cyclonedata
     # helloworlddata
 )
