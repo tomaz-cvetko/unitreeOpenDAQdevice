@@ -18,8 +18,6 @@ UnitreeChannel::UnitreeChannel(const ContextPtr& context,
     , index(init.index)
     , startTime(init.startTime)
     , microSecondsFromEpochToStartTime(init.microSecondsFromEpochToStartTime)
-    , samplesGenerated(0)
-    , counter(0)
     , sampleRate(init.sampleRate)
 {
     // std::cout << "Hello from UnitreeChannel::UnitreeChannel\n";
@@ -34,14 +32,50 @@ void UnitreeChannel::initProperties()
     // std::cout << "Hello from UnitreeChannel::initProperties\n";
 }
 
-uint64_t UnitreeChannel::getSamplesSinceStart(std::chrono::microseconds time) const
+namespace
 {
-    // std::cout << "Hello from UnitreeChannel::getSamplesSinceStart\n";
+    // LowState::tick counts milliseconds ("Used for 1 ms timing, incrementing in steps of 1 ms").
+    constexpr uint64_t DogTickUs = 1000;
+    // A larger forward jump (or any backward jump, e.g. the dog rebooted) re-anchors the time axis to the PC clock.
+    constexpr int64_t MaxDogTickJumpMs = 5000;
+}
 
-    const uint64_t samplesSinceStart =
-        static_cast<uint64_t>(std::trunc(static_cast<double>((time - startTime).count()) / 1'000'000.0 * sampleRate));
-    //     static_cast<uint64_t>(std::trunc(static_cast<double>((time - startTime).count()) / 500.0 * sampleRate));
-    return samplesSinceStart;
+void UnitreeChannel::anchorTime(uint32_t dogTick, uint64_t pcTimeUs)
+{
+    timeAnchored = true;
+    anchorTimeUs = pcTimeUs;
+    lastDogTick = dogTick;
+    dogTicksSinceAnchor = 0;
+}
+
+std::optional<uint64_t> UnitreeChannel::getSampleTime(uint32_t dogTick, uint64_t pcTimeUs)
+{
+    if (!timeAnchored)
+    {
+        anchorTime(dogTick, pcTimeUs);
+        std::cout << "Time axis anchored: dog tick " << dogTick << " = PC time " << pcTimeUs << " us" << std::endl;
+        return anchorTimeUs;
+    }
+
+    // Unsigned subtraction is wrap-safe; reading it as signed tells forward from backward jumps.
+    const int64_t step = static_cast<int32_t>(dogTick - lastDogTick);
+    if (step == 0)
+    {
+        // Same tick twice: a duplicate message, not a new measurement.
+        ++droppedDuplicates;
+        return std::nullopt;
+    }
+    if (step < 0 || step > MaxDogTickJumpMs)
+    {
+        std::cout << "Dog tick jumped from " << lastDogTick << " to " << dogTick << " (" << step
+                  << " ms); re-anchoring the time axis to the PC clock" << std::endl;
+        anchorTime(dogTick, pcTimeUs);
+        return anchorTimeUs;
+    }
+
+    lastDogTick = dogTick;
+    dogTicksSinceAnchor += static_cast<uint64_t>(step);
+    return anchorTimeUs + dogTicksSinceAnchor * DogTickUs;
 }
 
 // void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, std::vector<int16_t>& data)
@@ -49,13 +83,12 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, SensorDat
 {
     // std::cout << "Hello from UnitreeChannel::publishSamples\n";
 
-    if (startTick == 0)
-    {
-        startTick = getSamplesSinceStart(curTime);
-        std::cout << "startTick: " << startTick << std::endl;
-    }
-
     auto lock = this->getAcquisitionLock();
+
+    const uint64_t pcTimeUs = static_cast<uint64_t>((microSecondsFromEpochToStartTime + curTime).count());
+    const auto sampleTime = getSampleTime(data.tick, pcTimeUs);
+    if (!sampleTime)
+        return;
 
     // const size_t bufferSize = data.size();
     // assert(bufferSize % 4 == 0);
@@ -63,15 +96,10 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, SensorDat
     constexpr size_t channelCount = 4;
     constexpr size_t sampleCount = 1; // ONE sample per BufferS
 
-    // Number of samples in a synchronous & gapless scenario
-    const uint64_t samplesSinceStart = getSamplesSinceStart(curTime);
-    // const uint64_t neededSamples = samplesSinceStart - samplesGenerated;
-
     // const size_t sampleCount = bufferSize / 4;
 
-    // TODO: I have no idea what timestamps are appropriate here
-    // const auto packetTime = (samplesSinceStart) * deltaT + static_cast<uint64_t>(microSecondsFromEpochToStartTime.count());
-    const auto packetTime = (startTick + counter) * deltaT + static_cast<uint64_t>(microSecondsFromEpochToStartTime.count());
+    // One sample per packet, so each packet's offset is that sample's time (see getSampleTime)
+    const auto packetTime = *sampleTime;
     auto domainPacket = DataPacket(timeSignal.getDescriptor(), sampleCount, packetTime);
     
     std::vector<DataPacketPtr> packets;
@@ -350,9 +378,6 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, SensorDat
     fanFrequency1Signal.sendPacket(packets[70]);
     fanFrequency2Signal.sendPacket(packets[71]);
     fanFrequency3Signal.sendPacket(packets[72]);
-
-    counter += sampleCount;
-    samplesGenerated = samplesSinceStart;
 }
 
 std::string UnitreeChannel::getEpoch()

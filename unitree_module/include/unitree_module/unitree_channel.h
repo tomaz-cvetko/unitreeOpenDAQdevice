@@ -63,21 +63,26 @@ private:
     void buildSignalDescriptors_motors();
     void createSignals_motors();
 
-    uint64_t getSamplesSinceStart(std::chrono::microseconds time) const;
     [[nodiscard]] Int getDeltaT(const double sr) const;
+
+    // Domain value (us since epoch) for a sample with the given dog tick; std::nullopt = drop the sample.
+    std::optional<uint64_t> getSampleTime(uint32_t dogTick, uint64_t pcTimeUs);
+    void anchorTime(uint32_t dogTick, uint64_t pcTimeUs);
 
     uint64_t deltaT;
     size_t index;
 
     std::chrono::microseconds startTime;
     std::chrono::microseconds microSecondsFromEpochToStartTime;
-    std::chrono::microseconds lastCollectTime;
-    uint64_t samplesGenerated;
-
-    uint64_t counter;
     double sampleRate;
 
-    uint64_t startTick = 0;
+    // Time axis from LowState::tick: anchored once to the PC clock, then advanced by the dog's ticks,
+    // so lost DDS messages show up as gaps instead of shifting all later timestamps into the past.
+    bool timeAnchored = false;
+    uint64_t anchorTimeUs = 0;        // domain value of the anchor sample
+    uint32_t lastDogTick = 0;
+    uint64_t dogTicksSinceAnchor = 0; // 64-bit, so the 32-bit tick wrap-around (after 49.7 days) is harmless
+    uint64_t droppedDuplicates = 0;
 
     SignalConfigPtr timeSignal;
 

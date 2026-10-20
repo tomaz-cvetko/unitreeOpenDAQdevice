@@ -238,6 +238,12 @@ To reproduce network problems:
 .\dog_simulator.exe --stall 200 --stall-every 5  # every 5 s hold messages back for 200 ms, then send them as a burst
 ```
 
+To check what a client actually receives (sample rate, values, gaps, and whether the timestamps drift away from the PC clock), run `tools\check_stream.py` while `server_example` is running. It needs the openDAQ Python package (`py -m pip install openDAQ`):
+
+```powershell
+py tools\check_stream.py --seconds 20
+```
+
 `.\dog_simulator.exe --help` lists all options (rate, duration, starting tick, DDS domain). The simulator works on the same PC as `server_example` or on another PC in the same network. Don't run it while the real robot is connected to the same network, because both publish on the same topic.
 
 ## Troubleshooting

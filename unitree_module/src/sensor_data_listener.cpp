@@ -58,6 +58,7 @@ void SensorDataListenerLowState::on_data_available(dds::sub::DataReader<MsgType>
         buffer_s.voltage = msg.power_v();
         buffer_s.CPUtemp = msg.temperature_ntc1();
         buffer_s.fanFrequency = msg.fan_frequency();
+        buffer_s.tick = msg.tick();
 
         /*std::cout << "quaternion: ";
         for (int i = 0; i < 4; i++)

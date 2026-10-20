@@ -44,6 +44,7 @@ public:
         float_t voltage;
         uint8_t CPUtemp;
         std::array<uint16_t, 4> fanFrequency;
+        uint32_t tick;  // LowState::tick: the dog's own clock, 1 ms steps (incremented by 2 per 500 Hz message)
     };
 
     // auto now;
