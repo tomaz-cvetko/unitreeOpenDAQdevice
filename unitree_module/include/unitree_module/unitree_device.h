@@ -23,6 +23,7 @@
 #include <opendaq/device_impl.h>
 
 #include <unitree_module/common.h>
+#include <unitree_module/sensor_data_listener.h>
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
@@ -43,17 +44,28 @@ private:
     void initDomain();
     void initChannels();
 
+    SignalConfigPtr sig_F_fl;
+    SignalConfigPtr sig_F_fr;
+    SignalConfigPtr sig_F_rl;
+    SignalConfigPtr sig_F_rr;
+    SignalConfigPtr sigTime;
+
     // void processData(int16_t data) const;
     // void processData(std::vector<int16_t> data) const;
 
     void acqLoop();
-    void forwardDataCallback(std::vector<int16_t>&& data);
-    void forwardData(std::vector<int16_t>& data);
+    // void forwardDataCallback(std::vector<int16_t>&& data);
+    void forwardDataCallback(SensorDataListenerLowState::BufferS&& data);
+    // void forwardData(std::vector<int16_t>& data);
+    void forwardData(SensorDataListenerLowState::BufferS& data);
+    // void processData(std::vector<int16_t>& data) const;
+    void processData(SensorDataListenerLowState::BufferS& data) const;
 
     std::chrono::microseconds getMicroSecondsSinceDeviceStart() const;
 
     bool stopAcq;
-    std::queue<std::vector<int16_t>> queue;
+    // std::queue<std::vector<int16_t>> queue;
+    std::queue<SensorDataListenerLowState::BufferS> queue;
 
     std::mutex mutex;
     std::condition_variable cv;
@@ -63,6 +75,11 @@ private:
     std::chrono::microseconds microSecondsFromEpochToDeviceStart;
 
     ChannelPtr channel1;
+
+    std::unique_ptr<SensorDataListenerLowState> low_state_listener;
+    // std::optional<dds::sub::DataReader<MsgTypeLS_>> reader;
+    std::optional<dds::sub::DataReader<SensorDataListenerLowState::MsgType>> reader;
+
 };
 
 END_NAMESPACE_UNITREE_MODULE

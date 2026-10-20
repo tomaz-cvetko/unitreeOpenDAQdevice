@@ -7,34 +7,12 @@
 #include <opendaq/sync_component_private_ptr.h>
 #include <opendaq/thread_name.h>
 
-#include <unitree_module/sensor_data_listener.h>
 #include <unitree_module/unitree_channel.h>
 #include <unitree_module/unitree_device.h>
 
 #include <chrono>
 #include <iostream>
 
-// #include<LowState.hpp>
-
-//#include<helloworld_unitree/subscriber.cpp>
-
-//#include<>
-
-// #include <dds/dds.hpp>
-// #include <dds/domain/qos/DomainParticipantQos.hpp>
-// #include <LowState.hpp>
-
-/*
-Additional Include Directories
-D:\Razno\unitree_go2\cyclonedds-cxx-master\src\ddscxx\include
-D:\Razno\unitree_go2\cyclonedds-cxx-master\build\src\ddscxx\include
-D:\Razno\unitree_go2\cyclonedds-cxx-master\build\examples\helloworld
-D:\Razno\unitree_go2\cyclonedds-master\cyclonedds-master\install\include
-D:\Razno\unitree_go2\cyclonedds-master\cyclonedds-master\install\include\ddscxx
-
-Windows PowerShell
-Get-ChildItem -Path D:\Razno\unitree_go2 -Filter CycloneDDSConfig.cmake -Recurse
-*/
 
 BEGIN_NAMESPACE_UNITREE_MODULE
 
@@ -49,23 +27,48 @@ UnitreeDevice::UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent)
     , stopAcq(false)
     , acqThread([this]() { this->acqLoop(); })
 {
+    // std::cout << "Hello from UnitreeDevice::UnitreeDevice\n";
+
     this->loggerComponent = ctx.getLogger().getOrAddComponent(UNITREE_MODULE_NAME);
     initDomain();
     initChannels();
+    // initSignals();
+    std::cout << "creating device\n";
 
     /****************************************/
     // Unitree DDS
     dds::domain::DomainParticipant participant(0);
-    dds::topic::Topic<SensorDataListener::MsgType> topic(participant, SensorDataListener::GetTopicName());
+    dds::topic::Topic<SensorDataListenerLowState::MsgType> topic(participant, SensorDataListenerLowState::GetTopicName());
+    // dds::topic::Topic<SensorDataListenerLowState::MsgType> topic(participant, "rt/lowstate");
     dds::sub::Subscriber subscriber(participant);
 
-    dds::sub::DataReader<SensorDataListener::MsgType> reader(
+    low_state_listener = std::make_unique<SensorDataListenerLowState>(
+        [this](SensorDataListenerLowState::BufferS&& buffer) {
+            this->forwardDataCallback(std::move(buffer));
+        }
+    );
+
+    reader.emplace(
         subscriber,
         topic,
         subscriber.default_datareader_qos(),
-        new SensorDataListener([this](std::vector<int16_t>&& data) { this->forwardDataCallback(std::move(data)); }),
-        dds::core::status::StatusMask::data_available());
-    std::cout << "Listening for Unitree Go2 sensor data on topic '" << SensorDataListener::GetTopicName() << "'..." << std::endl;
+        low_state_listener.get(),
+        dds::core::status::StatusMask::data_available()
+    );
+
+    /*reader.emplace(
+        subscriber,
+        topic,
+        subscriber.default_datareader_qos(),
+        // new SensorDataListenerLowState([this](std::vector<int16_t>&& data) {
+        //     this->forwardDataCallback(std::move(data)); }),
+        [this](SensorDataListenerLowState::BufferS&& buffer) {
+            this->forwardDataCallback(std::move(buffer)); },
+        // new SensorDataListenerLowState(),
+        dds::core::status::StatusMask::data_available()
+    );*/
+    std::cout << "SensorDataListenerLowState::GetTopicName(): " << SensorDataListenerLowState::GetTopicName() << std::endl;
+    std::cout << "Listening for Unitree Go2 sensor data on topic '" << SensorDataListenerLowState::GetTopicName() << "'..." << std::endl;
     /****************************************/
 }
 
@@ -82,6 +85,8 @@ UnitreeDevice::~UnitreeDevice()
 
 DeviceInfoPtr UnitreeDevice::CreateDeviceInfo()
 {
+    // std::cout << "Hello from UnitreeDevice::CreateDeviceInfo\n";
+    
     // auto devInfo = DeviceInfo("example://device");
     auto devInfo = DeviceInfo("daq.dog://DewesoftRobotics_B42D4000O4N9D402");
 
@@ -97,30 +102,41 @@ DeviceInfoPtr UnitreeDevice::CreateDeviceInfo()
 
 DeviceTypePtr UnitreeDevice::CreateType()
 {
+    // std::cout << "Hello from UnitreeDevice::CreateType\n";
+
     return DeviceType("robotDog", "Robot dog", "", "daq.dog");
 }
 
 void UnitreeDevice::initChannels()
 {
+    // std::cout << "Hello from UnitreeDevice::initChannels\n";
+
     auto microSecondsSinceDeviceStart = getMicroSecondsSinceDeviceStart();
 
-    UnitreeChannelInit init{0, 1000, microSecondsSinceDeviceStart, microSecondsFromEpochToDeviceStart};
+    // UnitreeChannelInit init{0, 1000, microSecondsSinceDeviceStart, microSecondsFromEpochToDeviceStart};
+    UnitreeChannelInit init{0, 500, microSecondsSinceDeviceStart, microSecondsFromEpochToDeviceStart};
     channel1 = createAndAddChannel<UnitreeChannel>(ioFolder, "ExCh1", init);
 }
 
 DeviceInfoPtr UnitreeDevice::onGetInfo()
 {
+    // std::cout << "Hello from UnitreeDevice::onGetInfo\n";
+
     return CreateDeviceInfo();
 }
 
 std::chrono::microseconds UnitreeDevice::getMicroSecondsSinceDeviceStart() const
 {
+    // std::cout << "Hello from UnitreeDevice::getMicroSecondsSinceDeviceStart\n";
+
     auto currentTime = std::chrono::steady_clock::now();
     return std::chrono::duration_cast<std::chrono::microseconds>(currentTime - startTime);
 }
 
 uint64_t UnitreeDevice::onGetTicksSinceOrigin()
 {
+    // std::cout << "Hello from UnitreeDevice::onGetTicksSinceOrigin\n";
+
     /*auto ticksSinceEpoch = microSecondsFromEpochToDeviceStart + getMicroSecondsSinceDeviceStart();
     return static_cast<SizeT>(ticksSinceEpoch.count());*/
 
@@ -130,6 +146,8 @@ uint64_t UnitreeDevice::onGetTicksSinceOrigin()
 
 void UnitreeDevice::initDomain()
 {
+    // std::cout << "Hello from UnitreeDevice::initDomain\n";
+
     startTime = std::chrono::steady_clock::now();
     auto startAbsTime = std::chrono::system_clock::now();
 
@@ -140,6 +158,8 @@ void UnitreeDevice::initDomain()
 
 void UnitreeDevice::acqLoop()
 {
+    // std::cout << "Hello from UnitreeDevice::acqLoop\n";
+
     daqNameThread("UnitreeDogThread");
 
     while (true)
@@ -160,8 +180,11 @@ void UnitreeDevice::acqLoop()
     }
 }
 
-void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
+// void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
+void UnitreeDevice::forwardDataCallback(SensorDataListenerLowState::BufferS&& data)
 {
+    // std::cout << "Hello from UnitreeDevice::forwardDataCallback\n";
+
     if (CallbackQueueing)
     {
         std::unique_lock lock(mutex);
@@ -177,45 +200,14 @@ void UnitreeDevice::forwardDataCallback(std::vector<int16_t>&& data)
     }
 }
 
-void UnitreeDevice::forwardData(std::vector<int16_t>& data)
+// void UnitreeDevice::forwardData(std::vector<int16_t>& data)
+void UnitreeDevice::forwardData(SensorDataListenerLowState::BufferS& data)
 {
+    // std::cout << "Hello from UnitreeDevice::forwardData\n";
+
     // TODO: Maybe we need some multithreading locks here
     auto curTime = getMicroSecondsSinceDeviceStart();
     channel1.asPtr<IDogChannel>()->publishSamples(curTime, data);
 }
-
-// void UnitreeDevice::processData(int16_t data) const
-// // void UnitreeDevice::processData(std::vector<int16_t> data) const
-// {
-//     using namespace std::chrono;
-//     int64_t time = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
-
-//     DataPacketPtr domainPacket = DataPacket(sigTime.getDescriptor(), 1);
-//     int64_t* domainData = static_cast<int64_t*>(domainPacket.getRawData());
-//     *domainData = time;
-
-//     DataPacketPtr dp_F_fl = DataPacketWithDomain(domainPacket, sig_F_fl.getDescriptor(), 1);
-//     DataPacketPtr dp_F_fr = DataPacketWithDomain(domainPacket, sig_F_fr.getDescriptor(), 1);
-//     DataPacketPtr dp_F_rl = DataPacketWithDomain(domainPacket, sig_F_rl.getDescriptor(), 1);
-//     DataPacketPtr dp_F_rr = DataPacketWithDomain(domainPacket, sig_F_rr.getDescriptor(), 1);
-
-//     int16_t* data_F_fl = static_cast<int16_t*>(dp_F_fl.getRawData());
-//     int16_t* data_F_fr = static_cast<int16_t*>(dp_F_fr.getRawData());
-//     int16_t* data_F_rl = static_cast<int16_t*>(dp_F_rl.getRawData());
-//     int16_t* data_F_rr = static_cast<int16_t*>(dp_F_rr.getRawData());
-
-//     // std::cout << "data: " << data_F_fl << " " << data_F_fr << " " << data_F_rl << " " << data_F_rr << std::endl;
-
-//     *data_F_fl = data;
-//     *data_F_fr = data;
-//     *data_F_rl = data;
-//     *data_F_rr = data;
-
-//     sigTime.sendPacket(domainPacket);
-//     sig_F_fl.sendPacket(dp_F_fl);
-//     sig_F_fr.sendPacket(dp_F_fr);
-//     sig_F_rl.sendPacket(dp_F_rl);
-//     sig_F_rr.sendPacket(dp_F_rr);
-// }
 
 END_NAMESPACE_UNITREE_MODULE

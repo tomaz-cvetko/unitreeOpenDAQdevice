@@ -1,7 +1,7 @@
 set(MODULE_NAME example_module)
 set(TEST_APP test_${MODULE_NAME})
 
-set(TEST_SOURCES test_example_module.cpp
+set(TEST_SOURCES test_unitree_module.cpp
                  test_app.cpp
 )
 
