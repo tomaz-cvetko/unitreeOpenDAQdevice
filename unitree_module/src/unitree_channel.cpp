@@ -213,7 +213,8 @@ void UnitreeChannel::publishSamples(std::chrono::microseconds curTime, SensorDat
         }
         for (size_t i = 0; i < 12; ++i)
         {
-            float_t* packetDataMtemp = static_cast<float_t*>(packets[i+41].getRawData());
+            // Descriptor is UInt8 (1 byte per sample): writing through float_t* overflowed the packet buffer
+            uint8_t* packetDataMtemp = static_cast<uint8_t*>(packets[i+41].getRawData());
             packetDataMtemp[0] = data.motors[i].temperature();
         }
         for (size_t i = 0; i < 3; ++i)
