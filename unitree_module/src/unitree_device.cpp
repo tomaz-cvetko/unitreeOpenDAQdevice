@@ -29,7 +29,23 @@ UnitreeDevice::UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent)
 {
     // std::cout << "Hello from UnitreeDevice::UnitreeDevice\n";
 
-    this->loggerComponent = ctx.getLogger().getOrAddComponent(UNITREE_MODULE_NAME);
+    // acqThread is already running: if anything below throws, the destructor is not called,
+    // and destroying a joinable std::thread would terminate the process.
+    try
+    {
+        init();
+    }
+    catch (...)
+    {
+        stopDds();
+        stopAcqThread();
+        throw;
+    }
+}
+
+void UnitreeDevice::init()
+{
+    this->loggerComponent = this->context.getLogger().getOrAddComponent(UNITREE_MODULE_NAME);
     initDomain();
     initChannels();
     // initSignals();
@@ -74,13 +90,40 @@ UnitreeDevice::UnitreeDevice(const ContextPtr& ctx, const ComponentPtr& parent)
 
 UnitreeDevice::~UnitreeDevice()
 {
-    // TODO: Proper shutdown
+    // Stop the data source first, then the thread that consumes it.
+    stopDds();
+    stopAcqThread();
+}
+
+void UnitreeDevice::stopDds()
+{
+    if (!reader)
+        return;
+
+    // Closing the reader waits for a listener callback that is already running to finish,
+    // and no new callbacks into this (half-destroyed) device can start afterwards.
+    try
     {
-        auto lock = this->getAcquisitionLock();
+        reader->close();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Closing the DDS reader failed: " << e.what() << std::endl;
+    }
+    reader.reset();
+}
+
+void UnitreeDevice::stopAcqThread()
+{
+    {
+        // Must be the same mutex acqLoop waits on, otherwise the wake-up can be missed.
+        std::lock_guard lock(mutex);
         stopAcq = true;
     }
+    cv.notify_all();
 
-    acqThread.join();
+    if (acqThread.joinable())
+        acqThread.join();
 }
 
 DeviceInfoPtr UnitreeDevice::CreateDeviceInfo()
@@ -188,7 +231,6 @@ void UnitreeDevice::forwardDataCallback(SensorDataListenerLowState::BufferS&& da
     if (CallbackQueueing)
     {
         std::unique_lock lock(mutex);
-        stopAcq = false;
         queue.emplace(std::move(data));
         lock.unlock();
         cv.notify_all();

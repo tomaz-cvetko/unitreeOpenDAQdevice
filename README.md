@@ -68,8 +68,7 @@ Use **Build → Build All** (or `Ctrl+Shift+B`). The first build compiles openDA
    Press "enter" to exit the application...
    ```
    This means the RobotDog device is running and waiting for data from the dog. If the robot is reachable on the network (see *Connecting to the robot* below), data starts flowing immediately.
-3. Keep the console window open while you look at the data (next step).
-   - **Known issue:** pressing Enter currently doesn't close the program. Close the console window, or stop debugging with `Shift+F5`.
+3. Keep the console window open while you look at the data (next step). Press **Enter** in it to stop the program.
 
 ### 8. Look at the data
 

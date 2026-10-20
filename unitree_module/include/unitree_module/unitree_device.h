@@ -41,6 +41,9 @@ public:
     uint64_t onGetTicksSinceOrigin() override;
 
 private:
+    void init();
+    void stopDds();
+    void stopAcqThread();
     void initDomain();
     void initChannels();
 
