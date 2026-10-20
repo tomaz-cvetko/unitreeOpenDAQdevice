@@ -56,12 +56,10 @@ target_link_libraries(test_main
 get_target_property(SRCS test_main SOURCES)
 message(STATUS "test_main sources: ${SRCS}")
 
-add_custom_command(TARGET cyclone_example POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    $<TARGET_FILE:CycloneDDS::ddsc>
-    $<TARGET_FILE_DIR:cyclone_example>
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    $<TARGET_FILE:CycloneDDS-CXX::ddscxx>
-    $<TARGET_FILE_DIR:cyclone_example>
-)
+# Put the matching-config runtime DLLs (opendaq, ddsc/ddscd, ddscxx/ddscxxd, ...) next to the executables
+foreach(_exe server_example cyclone_example test_main)
+    add_custom_command(TARGET ${_exe} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${_exe}> $<TARGET_FILE_DIR:${_exe}>
+        COMMAND_EXPAND_LISTS)
+endforeach()
 # ==== ENDOF CYCLONE EXAMPLE APP ===

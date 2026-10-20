@@ -1,43 +1,82 @@
 {
     "version": 4,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 25,
+        "patch": 0
+    },
     "configurePresets": [
         {
-            "name": "x64/msvc-22/",
+            "name": "windows-base",
             "hidden": true,
-            "generator": "Visual Studio 17 2022",
+            "description": "Ninja + MSVC. Visual Studio 2022 and 2026 set up the compiler environment themselves (Open Folder / Open CMake project).",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/out/build/${presetName}",
+            "installDir": "${sourceDir}/out/install/${presetName}",
+            "architecture": {
+                "value": "x64",
+                "strategy": "external"
+            },
+            "toolset": {
+                "value": "host=x64",
+                "strategy": "external"
+            },
             "cacheVariables": {
-                "OPENDAQ_DEVICE_EXAMPLE_ENABLE_SERVER_APP": true
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe",
+                "OPENDAQ_DEVICE_EXAMPLE_ENABLE_SERVER_APP": "ON"
+            },
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            },
+            "vendor": {
+                "microsoft.com/VisualStudioSettings/CMake/1.0": {
+                    "hostOS": [ "Windows" ]
+                }
             }
         },
         {
-            "inherits": "x64/msvc-22/",
-            "name": "x64/msvc-22/debug",
-            "displayName": "[MSVC] Debug",
+            "name": "x64-debug",
+            "displayName": "x64 Debug",
+            "inherits": "windows-base",
             "cacheVariables": {
-                "CMAKE_PREFIX_PATH": "C:/Program Files/CycloneDDS-Cxx/Debug;C:/Program Files/CycloneDDS/Debug"
+                "CMAKE_BUILD_TYPE": "Debug"
             }
         },
         {
-            "inherits": "x64/msvc-22/",
-            "name": "x64/msvc-22/release",
-            "displayName": "[MSVC] Release",
+            "name": "x64-release",
+            "displayName": "x64 Release",
+            "inherits": "windows-base",
             "cacheVariables": {
-                "CMAKE_PREFIX_PATH": "C:/Program Files/CycloneDDS-Cxx/Release;C:/Program Files/CycloneDDS/Release"
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "x64-relwithdebinfo",
+            "displayName": "x64 Release with debug info",
+            "inherits": "windows-base",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "RelWithDebInfo"
             }
         }
     ],
     "buildPresets": [
         {
-            "name": "x64/msvc-22/full/release",
-            "displayName": "[MSVC] Release",
-            "configurePreset": "x64/msvc-22/release",
-            "configuration": "Release"
+            "name": "x64-debug",
+            "displayName": "x64 Debug",
+            "configurePreset": "x64-debug"
         },
         {
-            "name": "x64/msvc-22/full/debug",
-            "displayName": "[MSVC] Debug",
-            "configurePreset": "x64/msvc-22/debug",
-            "configuration": "Debug"
+            "name": "x64-release",
+            "displayName": "x64 Release",
+            "configurePreset": "x64-release"
+        },
+        {
+            "name": "x64-relwithdebinfo",
+            "displayName": "x64 Release with debug info",
+            "configurePreset": "x64-relwithdebinfo"
         }
     ]
 }

@@ -72,3 +72,11 @@ create_version_header(${LIB_NAME})
 #     PUBLIC
 #     ${CMAKE_CURRENT_SOURCE_DIR}/../include
 # )
+
+# The module is loaded as a plugin at runtime, so its own dependencies (ddsc[d].dll, ddscxx[d].dll)
+# must be copied next to it; the executables' runtime-DLL lists do not include them.
+if (WIN32)
+    add_custom_command(TARGET ${LIB_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_RUNTIME_DLLS:${LIB_NAME}> $<TARGET_FILE_DIR:${LIB_NAME}>
+        COMMAND_EXPAND_LISTS)
+endif()
