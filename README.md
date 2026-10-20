@@ -2,7 +2,101 @@
 
 An openDAQ module that subscribes to the Unitree Go2 `rt/lowstate` DDS topic (via CycloneDDS) and exposes it as an openDAQ device, **RobotDog**. The device's channel publishes foot forces, IMU, 12 motors (q, dq, tau, temperature), battery, power, temperatures and fan speeds on one 500 Hz time domain. Any openDAQ client can use it, including DewesoftX.
 
-## Prerequisites
+## Getting started (step by step)
+
+Follow these steps in order on a fresh Windows PC. Steps 1–4 are needed only once per machine. Later sections explain the details.
+
+### 1. Install the tools
+
+1. **Visual Studio 2022 (17.4 or newer) or Visual Studio 2026.** The free Community edition is enough: https://visualstudio.microsoft.com/
+   - In the Visual Studio Installer, tick the **Desktop development with C++** workload.
+   - In the panel on the right, make sure **C++ CMake tools for Windows** is ticked (it is by default). It provides CMake and Ninja.
+   - Already have Visual Studio? Open *Visual Studio Installer* → **Modify** on your installation and check the same two items.
+2. **Git for Windows:** https://git-scm.com/download/win. Keep the default options; it must end up on `PATH`. Check by opening a new PowerShell window and running `git --version`.
+3. Optional, for viewing the data without DewesoftX: **Python 3** (https://www.python.org/), with *Add python.exe to PATH* ticked.
+
+### 2. Get the source code
+
+Open **PowerShell** (Start menu → type *PowerShell*) and go to a folder for your projects, e.g. `C:\work`. Avoid very long paths: the build creates deep folder trees, and Windows has a 260-character path limit.
+
+```powershell
+cd C:\work
+git clone https://github.com/anamahau/unitreeOpenDAQdevice.git
+cd unitreeOpenDAQdevice
+```
+
+If you were told to use a specific branch, switch to it now with `git checkout <branch-name>`.
+
+### 3. Build and install CycloneDDS (≈10 minutes)
+
+Still in PowerShell, in the `unitreeOpenDAQdevice` folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\setup_cyclonedds.ps1
+```
+
+It ends with a green line *"CycloneDDS 11.0.1 (Debug + Release) installed to: C:\Users\<you>\cyclonedds-11.0.1"*. If it stops with a red error, check that Visual Studio (step 1) and Git are installed, then run it again.
+
+### 4. Tell the project where CycloneDDS is
+
+```powershell
+setx CYCLONEDDS_ROOT "$env:USERPROFILE\cyclonedds-11.0.1"
+```
+
+This sets a permanent user environment variable. Programs only see it after they are started again, so **close all Visual Studio windows now**, if any are open.
+
+### 5. Open the project in Visual Studio
+
+1. Start Visual Studio. On the start window choose **Open a local folder** (or, if VS is already open, **File → Open → Folder…**) and select the `unitreeOpenDAQdevice` folder, the one containing `CMakePresets.json`.
+   - Don't use *Open a project or solution*. There is no `.sln` file; Visual Studio works directly from the CMake files.
+2. Visual Studio starts **configuring** the project automatically. Watch the progress in the **Output** window (**View → Output**, then *Show output from:* **CMake**).
+   - **The first time takes a long time** (roughly 20 minutes or more), because openDAQ is downloaded and prepared. Wait until the Output window says *"CMake generation finished"*.
+   - If it says *"CycloneDDS 11.0.1 (C and C++) not found"*, step 4 didn't take effect. Close Visual Studio completely, start it again, and use **Project → Delete Cache and Reconfigure**.
+3. In the toolbar at the top, the configuration drop-down shows **x64 Debug**. Leave it for development, or pick **x64 Release** for a fast, optimised build. Each choice is configured and built separately, so the first build of each one takes long.
+
+### 6. Build
+
+Use **Build → Build All** (or `Ctrl+Shift+B`). The first build compiles openDAQ and takes a while. When it finishes, the Output window (*Show output from:* **Build**) ends with *"Build All succeeded"*.
+
+### 7. Run
+
+1. In the toolbar, click the small arrow next to the green ▶ button (*Select Startup Item*) and choose **server_example.exe**.
+2. Press **F5** to run with the debugger, or **Ctrl+F5** to run without it. A console window opens and shows, among other lines:
+   ```
+   creating device
+   Listening for Unitree Go2 sensor data on topic 'rt/lowstate'...
+   Press "enter" to exit the application...
+   ```
+   This means the RobotDog device is running and waiting for data from the dog. If the robot is reachable on the network (see *Connecting to the robot* below), data starts flowing immediately.
+3. Keep the console window open while you look at the data (next step).
+   - **Known issue:** pressing Enter currently doesn't close the program. Close the console window, or stop debugging with `Shift+F5`.
+
+### 8. Look at the data
+
+- **openDAQ Python GUI.** In a new PowerShell window:
+  ```powershell
+  py -m pip install openDAQ
+  py -m openDAQ
+  ```
+  The **Robot dog** device shows up in the list of discovered devices. Connect to it and open its signals (forces, IMU, motors, …).
+- **DewesoftX:** add the device through the openDAQ device list. It appears as **Robot dog**.
+
+### Connecting to the robot
+
+- The program receives the dog's data over the network (DDS, domain 0, topic `rt/lowstate`). Connect the PC to the robot's Ethernet port. Following Unitree's developer documentation, give the PC's wired network adapter a static address in the robot's subnet (for the Go2: `192.168.123.x`, e.g. `192.168.123.99`, mask `255.255.255.0`).
+- If the PC has several network adapters (Wi-Fi plus Ethernet, VPN, …) and no data arrives, tell CycloneDDS which adapter to use before starting `server_example`. Find the adapter name (e.g. `Ethernet 2`) with `Get-NetAdapter` in PowerShell, then:
+  ```powershell
+  [Environment]::SetEnvironmentVariable("CYCLONEDDS_URI", "<CycloneDDS><Domain><General><Interfaces><NetworkInterface name='Ethernet 2'/></Interfaces></General></Domain></CycloneDDS>", "User")
+  ```
+  Restart Visual Studio afterwards, as in step 4.
+
+### Updating later
+
+To get newer code, run `git pull` in the project folder, then build again (step 6). Steps 1–4 don't need repeating. If Visual Studio behaves strangely after an update, use **Project → Delete Cache and Reconfigure**.
+
+---
+
+## Prerequisites (reference)
 
 - **Visual Studio 2022 (17.4 or newer) or Visual Studio 2026**, with the *Desktop development with C++* workload. That workload includes *C++ CMake tools for Windows*, which provides CMake and Ninja.
 - **Git**. It must be on `PATH`, because openDAQ and CycloneDDS are fetched with it.
