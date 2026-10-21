@@ -85,26 +85,11 @@ add_subdirectory(external)
 add_subdirectory(unitree_module) # Means: go execute unitree_module/CMakeLists.txt
 
 if(OPENDAQ_DEVICE_EXAMPLE_ENABLE_SERVER_APP)
-	message(STATUS "Enbled example server application")
+    message(STATUS "Enabled example server application")
     add_subdirectory(server_application)
+
+    # "bundle" target: a folder/zip with everything needed to run server_example on another PC
+    if (WIN32)
+        include(Bundle)
+    endif()
 endif()
-
-# Set CPack variables
-set(CPACK_COMPONENTS_ALL RUNTIME)
-set(CPACK_PROJECT_NAME ${PROJECT_NAME})
-set(CPACK_PACKAGE_NAME ${PROJECT_NAME})
-set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
-set(CPACK_OUTPUT_FILE_PREFIX "${CMAKE_BINARY_DIR}/package")
-
-# Set the CPack generator based on the platform
-if (WIN32)
-    set(CPACK_GENERATOR "ZIP")
-elseif (UNIX AND NOT APPLE)
-    cmake_host_system_information(RESULT DISTRO_ID QUERY DISTRIB_ID)
-    cmake_host_system_information(RESULT DISTRO_VERSION_ID QUERY DISTRIB_VERSION_ID)
-    set(CPACK_SYSTEM_NAME "${DISTRO_ID}${DISTRO_VERSION_ID}")
-    set(CPACK_GENERATOR "TGZ")
-endif()
-
-# Include CPack for packaging
-include(CPack)

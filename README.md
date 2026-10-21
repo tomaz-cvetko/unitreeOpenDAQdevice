@@ -89,6 +89,20 @@ Use **Build → Build All** (or `Ctrl+Shift+B`). The first build compiles openDA
   ```
   Restart Visual Studio afterwards, as in step 4.
 
+  `CYCLONEDDS_URI` is a per-user setting **on each PC**: set it on every PC that talks to the robot, using that PC's adapter name. It applies to every CycloneDDS program that user runs. Remove it with `[Environment]::SetEnvironmentVariable("CYCLONEDDS_URI", $null, "User")`.
+- **Windows Firewall:** the first time `server_example.exe` (or `dog_simulator.exe`) runs, Windows asks whether it may communicate on networks. Allow it, at least on *private* networks. Otherwise no DDS data arrives (UDP) and openDAQ clients such as DewesoftX can't connect (TCP). The prompt comes again for every new folder the program runs from, e.g. a new bundle.
+
+### 9. Run it on another PC (bundle)
+
+The PC connected to the robot doesn't need Visual Studio or CycloneDDS. Build a self-contained bundle here and copy it over:
+
+1. In Visual Studio, select the **x64 Release** configuration.
+2. Build the **`bundle`** target. In the Solution Explorer, use the *Switch Views* button to open the **CMake Targets View**, right-click **bundle**, then **Build**. From a Developer PowerShell, `cmake --build --preset x64-release --target bundle` does the same.
+3. The result is in `out\build\x64-release\bundle\`: a folder `UnitreeDog-<version>-win64` and the same as a `.zip` (about 6 MB).
+4. Copy the `.zip` to the other PC, unzip it anywhere, and follow the `README.md` inside. In short: set up the network, then double-click `start_server.bat`.
+
+The bundle holds `server_example.exe`, `dog_simulator.exe`, the module, all openDAQ and CycloneDDS DLLs, the Visual C++ runtime, and `tools\check_stream.py`. Always build it from a **Release** configuration: Debug builds need Visual Studio's debug runtime, which isn't installed on other PCs.
+
 ### Updating later
 
 To get newer code, run `git pull` in the project folder, then build again (step 6). Steps 1–4 don't need repeating. If Visual Studio behaves strangely after an update, use **Project → Delete Cache and Reconfigure**.
